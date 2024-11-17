@@ -3,7 +3,8 @@
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
-<!--delete-->
+![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d0ab35a5-84ab-4060-b380-b16253cf842b)
+
 ---
 Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) files with ease. Learn more about DBML at [dbdiagram.io](https://dbdiagram.io/). This package helps Laravel developers streamline the process of turning DBML diagrams into fully functional code. Say goodbye to manually writing repetitive code and let this command-line utility do the work for you.
 
