@@ -10,12 +10,16 @@ Generate Laravel Eloquent models and migration files directly from your DBML (Da
 - **Relationship Parsing**: Automatically generate `belongsTo`, `hasOne`, and `hasMany` relationships based on DBML references.
 - **Customizable Stubs**: Modify generated model and migration templates to fit your coding style.
 
+## Package Description
+
+A Laravel package that generates Eloquent models and migration files from DBML schema files. Simplify DBML parsing, automate relationship creation, and enhance development productivity.
+
 ## Installation
 
 To use this package, add it to your Laravel project via Composer:
 
 ```bash
-composer require egyjs/dbml-to-laravel
+composer require egyjs/dbml-to-laravel --dev
 ```
 
 Then, publish the stubs:
@@ -84,26 +88,26 @@ Table posts {
 }
 ```
 
-Running the command:
+[Run](https://github.com/egyjs/dbml-to-laravel/wiki)ning the command:
 
 ```bash
 php artisan generate:dbml schema.dbml
 ```
 
-Will generate:
+[Will generate:](https://github.com/egyjs/dbml-to-laravel/wiki)
 
-- **User Model** (`app/Models/User.php`) with relationships to posts.
-- **Post Model** (`app/Models/Post.php`) with a `belongsTo` relationship to users.
-- **Migration Files** for `users` and `posts` tables in the `database/migrations` folder.
+- **User Model** (`app/Models/User.php`[) ](https://github.com/egyjs/dbml-to-laravel/wiki)[with relationships to p](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)o[sts.](https://github.com/egyjs/dbml-to-laravel/wiki)
+- **[Post Model](https://github.com/egyjs/dbml-to-laravel/wiki)** (`app/Models/Post.php`)[ with a ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`belongsTo`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ relat](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)ionship to users.
+- **Migration Files** for `user`[`s`](https://github.com/egyjs/dbml-to-laravel/wiki)[ and](https://github.com/egyjs/dbml-to-laravel/wiki)[ ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`posts`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ tables in the ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`da`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)`tabase/migrations` folder.
 
-## Requirements
+## [Requirements](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)
 
-- Laravel 8.x or higher.
-- PHP 8.0 or higher.
+- [Laravel](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md) 8.[x or higher.](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)
+- [PHP 8.0](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md) or higher.
 
 ## Documentation
 
-For detailed usage, examples, and advanced configuration, visit our [documentation page](https://github.com/egyjs/dbml-to-laravel/wiki).
+For detailed usage, examples, and advanced configuratio[n, visit our ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[documentat](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ion page](https://github.com/egyjs/dbml-to-laravel/wiki).
 
 ## Contributing
 
