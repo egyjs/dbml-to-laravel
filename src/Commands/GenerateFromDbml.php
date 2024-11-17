@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Egyjs\DbmlToLaravel\Commands;
 
 use Butschster\Dbml\Ast\Table\ColumnNode;
 use Butschster\Dbml\Ast\TableNode;
