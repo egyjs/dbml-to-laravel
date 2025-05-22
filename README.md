@@ -1,79 +1,58 @@
 # DBML to Laravel Model & Migration Generator
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/egyjs/dbml-to-laravel.svg?style=flat-square&get)](https://packagist.org/packages/egyjs/dbml-to-laravel)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/run-tests.yml?branch=main\&label=tests\&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
+
 ![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d0ab35a5-84ab-4060-b380-b16253cf842b)
 
 ---
-Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) files with ease. Learn more about DBML at [dbdiagram.io](https://dbdiagram.io/). This package helps Laravel developers streamline the process of turning DBML diagrams into fully functional code. Say goodbye to manually writing repetitive code and let this command-line utility do the work for you.
+
+Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) files. Learn more about DBML at [dbdiagram.io](https://dbdiagram.io/). This package helps Laravel developers turn DBML diagrams into functional code fast.
 
 ## Features
 
-- **DBML to Laravel Models**: Automatically generate Laravel Eloquent models from DBML files, including fillable properties and relationships.
-- **DBML to Migration Files**: Generate migration files directly from your DBML tables with proper data types and relationships.
-- **Enum Support**: Handle `enum` fields with ease, automatically integrating them into both models and migrations.
-- **Relationship Parsing**: Automatically generate `belongsTo`, `hasOne`, and `hasMany` relationships based on DBML references.
-- **Customizable Stubs**: Modify generated model and migration templates to fit your coding style.
-
-## Package Description
-
-A Laravel package that generates Eloquent models and migration files from DBML schema files. Simplify DBML parsing, automate relationship creation, and enhance development productivity.
+* Generate Eloquent models from DBML
+* Generate migration files from DBML
+* Support for enum fields
+* Auto-generate relationships: belongsTo, hasOne, hasMany
+* Fully customizable stubs for models and migrations
 
 ## Installation
 
-To use this package, add it to your Laravel project via Composer:
-
 ```bash
 composer require egyjs/dbml-to-laravel --dev
-```
-
-Then, publish the stubs:
-
-```bash
 php artisan vendor:publish --tag=dbml-to-laravel-stubs
 ```
 
 ## Usage
 
-This package provides a command that can generate models and migration files from a given DBML file:
-
 ```bash
 php artisan generate:dbml path/to/your-schema.dbml
 ```
 
-### Command Overview
+### Command Argument
 
-- `file`: The path to your DBML file that contains the database schema.
+* `file`: Path to your DBML file
 
 ## How It Works
 
-The command parses your DBML file to read table definitions, columns, enums, and references. It then generates the following:
+The package parses the DBML file and generates:
 
-1. **Models**: Laravel Eloquent models are created based on the table definitions. Fields are marked as fillable where appropriate, and relations are generated.
-2. **Migrations**: Laravel migration files are generated, including the proper data types for each field. Foreign key relationships are set up automatically.
+1. **Models**
 
-### Generated Models
+   * `fillable` fields for mass assignment
+   * `casts` for json, datetime, etc.
+   * `relationships` based on references
 
-- **Fillable Fields**: All non-primary key columns are marked as fillable by default, allowing for mass assignment.
-- **Casts**: Columns are automatically cast to appropriate data types for easier handling in your application. For example:
-  - `json` fields are cast to arrays.
-  - `timestamp` and `datetime` fields are cast to `datetime` objects, making date manipulation simpler.
-- **Relationships**: Relationships (`belongsTo`, `hasOne`, `hasMany`) are generated based on foreign key references found in the DBML file.
+2. **Migrations**
 
-## Customization
-
-This package includes customizable stubs for both models and migrations. You can modify these stubs to fit your coding style by publishing them:
-
-```bash
-php artisan vendor:publish --tag=dbml-to-laravel-stubs
-```
-
-After publishing, the stubs will be located in `stubs/dbml-to-laravel/`. You can edit them to customize how the models and migrations are generated.
+   * Fields with correct data types
+   * Foreign keys with constraints
 
 ## Example
 
-Suppose you have the following DBML file (`schema.dbml`):
+DBML:
 
 ```dbml
 Table users {
@@ -94,48 +73,46 @@ Table posts {
 }
 ```
 
-[Run](https://github.com/egyjs/dbml-to-laravel/wiki)ning the command:
+Command:
 
 ```bash
 php artisan generate:dbml schema.dbml
 ```
 
-[Will generate:](https://github.com/egyjs/dbml-to-laravel/wiki)
+Generates:
 
-- **User Model** (`app/Models/User.php`[) ](https://github.com/egyjs/dbml-to-laravel/wiki)[with relationships to p](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)o[sts.](https://github.com/egyjs/dbml-to-laravel/wiki)
-- **[Post Model](https://github.com/egyjs/dbml-to-laravel/wiki)** (`app/Models/Post.php`)[ with a ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`belongsTo`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ relat](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)ionship to users.
-- **Migration Files** for `user`[`s`](https://github.com/egyjs/dbml-to-laravel/wiki)[ and](https://github.com/egyjs/dbml-to-laravel/wiki)[ ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`posts`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ tables in the ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[`da`](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)`tabase/migrations` folder.
+* `User` model with `hasMany(Post)`
+* `Post` model with `belongsTo(User)`
+* Migrations for both tables
 
-## [Requirements](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)
+## Customization
 
-- [Laravel](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md) 8.[x or higher.](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)
-- [PHP 8.0](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md) or higher.
+Edit published stubs in:
+
+```
+stubs/dbml-to-laravel/
+```
+
+## Requirements
+
+* Laravel 8.x or higher
 
 ## Documentation
 
-For detailed usage, examples, and advanced configuratio[n, visit our ](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[documentat](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md)[ion page](https://github.com/egyjs/dbml-to-laravel/wiki).
+See full [documentation](https://github.com/egyjs/dbml-to-laravel/wiki) and [CONTRIBUTING.md](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md).
 
 ## Contributing
 
-Feel free to open issues or submit pull requests. Any improvements or additional features are welcome.
-
-If you're interested in contributing, check out our [contribution guidelines](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md).
+Open issues or pull requests. Contributions are welcome. See [contribution guidelines](https://github.com/egyjs/dbml-to-laravel/blob/main/CONTRIBUTING.md).
 
 ## License
 
-This package is open-sourced software licensed under the [MIT license](LICENSE).
+MIT License
 
 ## SEO Keywords
 
-- DBML to Laravel
-- Laravel Model Generator
-- Laravel Migration Generator
-- DBML Parsing in Laravel
-- Laravel Eloquent Relationships Generator
-- Laravel Enum Handling
-- Laravel Schema Automation
+DBML to Laravel, Laravel Model Generator, Laravel Migration Generator, DBML Parsing in Laravel, Laravel Eloquent Relationships Generator, Laravel Enum Handling, Laravel Schema Automation
 
 ## Tags
 
 `laravel`, `dbml`, `model generator`, `migration generator`, `eloquent`, `relationships`, `php`, `developer tools`, `schema generator`, `automation`
-
