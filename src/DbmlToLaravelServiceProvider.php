@@ -19,4 +19,16 @@ class DbmlToLaravelServiceProvider extends PackageServiceProvider
             ->name('dbml-to-laravel')
             ->hasCommand(GenerateFromDbml::class);
     }
+
+    public function boot()
+    {
+        parent::boot();
+
+        // Publish stub files
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__ . '/../stubs/' => base_path('stubs/dbml-to-laravel'),
+            ], 'dbml-to-laravel-stubs');
+        }
+    }
 }
