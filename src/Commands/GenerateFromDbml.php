@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class GenerateFromDbml extends Command
 {
-    protected $signature = 'generate:dbml {file}';
+    protected $signature = 'generate:dbml {file} {--force : Overwrite existing files}';
     protected $description = 'Generate models and migrations from a DBML file';
     /**
      * @var \Butschster\Dbml\Ast\EnumNode[]
@@ -19,75 +19,115 @@ class GenerateFromDbml extends Command
     private array $enums;
 
     private const FORBIDDEN_MODEL_NAMES = [
-        'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String', 'Array', 'Float', 'Int', 'Bool', 'Boolean', 'Null', 'Void', 'Iterable', 'Parent', 'Self', 'Static', 'Mixed'
+        'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String',
+        'Array', 'Float', 'Int', 'Bool', 'Boolean', 'Null', 'Void', 'Iterable',
+        'Parent', 'Self', 'Static', 'Mixed'
     ];
 
-    public function handle()
+    /**
+     * Counter for migration sequence numbering
+     */
+    private int $migrationCounter = 0;
+
+    public function handle(): int
     {
         $file = $this->argument('file');
 
         // Check if the provided file exists
         if (!file_exists($file)) {
             $this->error("File not found: $file");
-            return;
+            return Command::FAILURE;
         }
 
-        // Create the DBML parser and parse the schema from the file
-        $parser = DbmlParserFactory::create();
-        $schema = $parser->parse(file_get_contents($file));
+        try {
+            $parser = DbmlParserFactory::create();
+            $schema = $parser->parse(file_get_contents($file));
+        } catch (\Exception $e) {
+            $this->error("Failed to parse DBML file: " . $e->getMessage());
+            return Command::FAILURE;
+        }
 
         // Retrieve enums from the schema for use in migrations
         $this->enums = $schema->getEnums();
+        $this->migrationCounter = 0; // Reset counter for each run
+        $generatedModels = 0;
+        $generatedMigrations = 0;
+
         foreach ($schema->getTables() as $table) {
-            // Generate model and migration for each table
-            $this->generateModel($table);
-            $this->generateMigration($table);
+            if ($this->generateModel($table)) {
+                $generatedModels++;
+            }
+            if ($this->generateMigration($table)) {
+                $generatedMigrations++;
+            }
         }
 
-        $this->info('Models and migrations generated successfully.');
+        $this->info("Generated $generatedModels models and $generatedMigrations migrations successfully.");
+        return Command::SUCCESS;
     }
 
-    protected function generateModel(TableNode $table): void
+    protected function generateModel(TableNode $table): bool
     {
         $modelName = Str::studly(Str::singular($table->getName()));
 
         // Check if the model name is a reserved PHP keyword
         if ($this->isForbiddenModelName($modelName)) {
             $this->error("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
-            return;
+            return false;
         }
 
         $filePath = app_path("Models/$modelName.php");
 
-        // Skip model creation if the file already exists
-        if ($this->modelExists($filePath, $modelName)) {
-            return;
+        if (!$this->option('force') && $this->modelExists($filePath, $modelName)) {
+            return false;
         }
 
         // Generate the content for the model
         $content = $this->generateModelContent($table, $modelName);
 
-        // Write the generated content to the model file
-        if ($content) {
-            (new Filesystem)->put($filePath, $content);
-            $this->info("Model $modelName created.");
+        if (!$content) {
+            return false;
         }
+
+        $this->ensureDirectoryExists(dirname($filePath));
+        (new Filesystem)->put($filePath, $content);
+        $this->info("Model $modelName created.");
+
+        return true;
     }
 
-    protected function generateMigration(TableNode $table): void
+    protected function generateMigration(TableNode $table): bool
     {
         $migrationName = 'create_' . Str::snake($table->getName()) . '_table';
-        $fileName = date('Y_m_d_His') . '_' . $migrationName . '.php';
+
+        // Generate timestamp with incremental counter
+        $baseDate = now()->format('Y_m_d');
+        $sequence = str_pad($this->migrationCounter, 6, '0', STR_PAD_LEFT);
+        $timestamp = $baseDate . '_' . $sequence;
+
+        $fileName = $timestamp . '_' . $migrationName . '.php';
         $filePath = database_path("migrations/$fileName");
 
-        // Generate the content for the migration
-        $content = $this->generateMigrationContent($table, $migrationName);
-
-        // Write the generated content to the migration file
-        if ($content) {
-            (new Filesystem)->put($filePath, $content);
-            $this->info("Migration for {$table->getName()} created.");
+        // Check if migration already exists
+        if (!$this->option('force') && $this->migrationExists($table->getName())) {
+            $this->warn("Migration for table {$table->getName()} already exists. Skipping...");
+            return false;
         }
+
+        $content = $this->generateMigrationContent($table);
+
+        if (!$content) {
+            return false;
+        }
+
+        $this->ensureDirectoryExists(dirname($filePath));
+        (new Filesystem)->put($filePath, $content);
+        $this->info("Migration for {$table->getName()} created.");
+
+        // Increment counter for next migration
+        $this->migrationCounter++;
+
+        return true;
     }
 
     private function generateModelContent(TableNode $table, string $modelName): ?string
@@ -99,46 +139,54 @@ class GenerateFromDbml extends Command
         $casts = $this->generateCasts($columns);
         // Generate the relations for the model
         $relations = $this->parseRelations($this->generateRelations($columns));
+        // Generate the table property if the table name doesn't follow Laravel conventions
+        $tableProperty = $this->generateTableProperty($table->getName(), $modelName);
 
-        // Retrieve the model stub content
-        $stub = $this->getStubContent('model.stub');
+        $stub = $this->getValidatedStubContent('model.stub', 'Model');
         if ($stub === null) {
-            $this->error("Model stub not found.");
             return null;
         }
 
         $tab = str_repeat("\t", 2);
-        // Create the casts string by formatting the key-value pairs
-        $castsString = implode(",\n$tab", array_map(fn($key, $value) => "'$key' => '$value'", array_keys($casts), $casts));
-        // Replace placeholders in the stub with the actual content
+        $castsString = '';
+
+        if (!empty($casts)) {
+            $castsString = implode(",\n$tab", array_map(
+                fn($key, $value) => "'$key' => '$value'",
+                array_keys($casts),
+                $casts
+            ));
+        }
+
+        $fillableString = '';
+        if (!empty($fillable)) {
+            $fillableString = implode(",\n$tab", $fillable);
+        }
+
         return str_replace(
-            ['{{ modelName }}', '{{ fillable }}', '{{ casts }}', '{{ relations }}'],
-            [$modelName, implode(",\n$tab", $fillable), $castsString, $relations],
+            ['{{ modelName }}', '{{ tableProperty }}', '{{ fillable }}', '{{ casts }}', '{{ relations }}'],
+            [$modelName, $tableProperty, $fillableString, $castsString, $relations],
             $stub
         );
     }
 
-    private function generateMigrationContent(TableNode $table, string $migrationName): ?string
+    private function generateMigrationContent(TableNode $table): ?string
     {
-        $columns = $table->getColumns();
-        // Filter out certain columns such as created_at, updated_at, and id
-        $columns = collect($columns)
-            ->filter(fn(ColumnNode $col) => !in_array($col->getName(), ['created_at', 'updated_at','id']))
-            ->values()->toArray();
-        // Generate the fields for the migration
+        $columns = collect($table->getColumns())
+            ->filter(fn(ColumnNode $col) => !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true))
+            ->values()
+            ->toArray();
+
         $fields = $this->generateMigrationFields($columns);
 
-        // Retrieve the migration stub content
-        $stub = $this->getStubContent('migration.stub');
+        $stub = $this->getValidatedStubContent('migration.stub', 'Migration');
         if ($stub === null) {
-            $this->error("Migration stub not found.");
             return null;
         }
 
-        // Replace placeholders in the stub with the actual content
         return str_replace(
-            ['{{ migrationName }}', '{{ tableName }}', '{{ fields }}'],
-            [$migrationName, $table->getName(), $fields],
+            ['{{ tableName }}', '{{ fields }}'],
+            [$table->getName(), $fields],
             $stub
         );
     }
@@ -150,28 +198,61 @@ class GenerateFromDbml extends Command
         return file_exists($stubPath) ? file_get_contents($stubPath) : null;
     }
 
+    private function getValidatedStubContent(string $stubName, string $type): ?string
+    {
+        $stub = $this->getStubContent($stubName);
+        if ($stub === null) {
+            $this->error("$type stub not found.");
+            return null;
+        }
+        return $stub;
+    }
+
     private function isForbiddenModelName(string $modelName): bool
     {
-        // Check if the model name is in the list of forbidden names
-        return in_array($modelName, self::FORBIDDEN_MODEL_NAMES);
+        return in_array($modelName, self::FORBIDDEN_MODEL_NAMES, true);
     }
 
     private function modelExists(string $filePath, string $modelName): bool
     {
         // Check if the model file already exists
         if (file_exists($filePath)) {
-            $this->warn("Model $modelName already exists. Skipping...");
+            $this->warn("Model $modelName already exists. Use --force to overwrite.");
             return true;
         }
         return false;
+    }
+
+    private function migrationExists(string $tableName): bool
+    {
+        $migrationPattern = '*_create_' . Str::snake($tableName) . '_table.php';
+        $migrationPath = database_path('migrations');
+
+        if (!is_dir($migrationPath)) {
+            return false;
+        }
+
+        $existingMigrations = glob($migrationPath . '/' . $migrationPattern);
+        return !empty($existingMigrations);
+    }
+
+    private function ensureDirectoryExists(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
     }
 
     private function generateFillable(array $columns): array
     {
         // Generate the fillable attributes by filtering out primary keys and certain columns
         return collect($columns)
-            ->filter(fn(ColumnNode $col) => !$col->isPrimaryKey() && !in_array($col->getName(), ['created_at', 'updated_at', 'id']))
+            ->filter(fn(ColumnNode $col) =>
+                !$col->isPrimaryKey() &&
+                !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
+            )
             ->map(fn(ColumnNode $col) => "'" . $col->getName() . "'")
+            ->values()
             ->toArray();
     }
 
@@ -182,7 +263,7 @@ class GenerateFromDbml extends Command
             ->mapWithKeys(fn(ColumnNode $col) => [
                 $col->getName() => $this->mapCastType($col->getType()->getName())
             ])
-            ->filter(fn($value) => !$value && !in_array($value, ['string', 'integer']))
+            ->filter(fn($value) => !empty($value) && !in_array($value, ['string', 'integer'], true))
             ->toArray();
     }
 
@@ -199,6 +280,7 @@ class GenerateFromDbml extends Command
                     'foreignKey' => $col->getName(),
                 ];
             })
+            ->values()
             ->toArray();
     }
 
@@ -225,36 +307,39 @@ class GenerateFromDbml extends Command
             $type = $this->mapColumnType($column->getType()->getName());
             $name = $column->getName();
 
-            // Handle enum types by retrieving possible values
+            // Handle enum types
             if (isset($this->enums[$column->getType()->getName()])) {
-                $enumValues = $this->enums[$column->getType()->getName()]->getValues();
-                $enumValues = array_map(fn($value) => $value->getValue(), $enumValues);
-                $enumString = implode("', '", $enumValues);
-                $field = "\$table->enum('$name', ['$enumString'])";
-            } else if ($column->getRefs() && count($column->getRefs()) > 0) {
-                // Handle foreign keys by adding references to other tables
+                $enumValues = collect($this->enums[$column->getType()->getName()]->getValues())
+                    ->map(fn($value) => $value->getValue())
+                    ->toArray();
+                $enumString = "'" . implode("', '", $enumValues) . "'";
+                $field = "\$table->enum('$name', [$enumString])";
+            }
+            // Handle foreign keys
+            elseif ($column->getRefs() && count($column->getRefs()) > 0) {
                 $referencedTable = $column->getRefs()[0]->getRightTable()->getTable();
                 $field = "\$table->foreignId('$name')->constrained('$referencedTable')";
-            } else {
-                // Handle other field types
+            }
+            // Handle regular fields
+            else {
                 $field = "\$table->$type('$name')";
             }
 
-            // TODO: Add nullable (not working because of the parser library)
-//            if ($column->isNull()) {
-//                $field .= '->nullable()';
-//            }
+            // Add nullable constraint (commented out due to parser library limitations)
+            // if ($column->isNull()) {
+            //     $field .= '->nullable()';
+            // }
 
-            // Mark the field as primary if it is a primary key
+            // Add primary key constraint
             if ($column->isPrimaryKey()) {
                 $field .= '->primary()';
             }
 
-            return "$field;\n            ";
-        })->implode('');
+            return "            $field;";
+        })->implode("\n");
     }
 
-    protected function mapColumnType($type): string
+    protected function mapColumnType(string $type): string
     {
         // Map the DBML column types to Laravel migration types
         return match (strtolower($type)) {
@@ -268,21 +353,44 @@ class GenerateFromDbml extends Command
             'date' => 'date',
             'time' => 'time',
             'float' => 'float',
+            'double' => 'double',
+            'bigint' => 'bigInteger',
+            'smallint' => 'smallInteger',
+            'tinyint' => 'tinyInteger',
+            'char' => 'char',
+            'uuid' => 'uuid',
             'morph' => 'morphs',
             default => 'string',
         };
     }
 
-    protected function mapCastType($type): string
+    protected function mapCastType(string $type): string
     {
         // Map the DBML column types to Laravel model casts
         return match (strtolower($type)) {
             'bool', 'boolean' => 'boolean',
-            'decimal', 'float' => 'float',
+            'decimal', 'float', 'double' => 'float',
             'json' => 'array',
-            'timestamp', 'datetime', 'date' => 'datetime',
-            default => 'string',
+            'timestamp', 'datetime' => 'datetime',
+            'date' => 'date',
+            'time' => 'time',
+            'int', 'integer', 'bigint', 'smallint', 'tinyint' => 'integer',
+            default => '',
         };
+    }
+
+    /**
+     * Generate table property if table name doesn't follow Laravel conventions
+     */
+    private function generateTableProperty(string $tableName, string $modelName): string
+    {
+        $expectedTableName = Str::snake(Str::plural($modelName));
+
+        if ($tableName !== $expectedTableName) {
+            return "protected \$table = '$tableName';\n";
+        }
+
+        return '';
     }
 }
 

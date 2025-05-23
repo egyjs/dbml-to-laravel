@@ -9,6 +9,7 @@ class {{ modelName }} extends Model
 {
     use HasFactory;
 
+    {{ tableProperty }}
     protected $fillable = [
         {{ fillable }}
     ];
