@@ -193,9 +193,15 @@ class GenerateFromDbml extends Command
 
     private function getStubContent(string $stubName): ?string
     {
-        $stubPath = __DIR__ . "/stubs/$stubName";
-        // Retrieve the content of the stub file if it exists
-        return file_exists($stubPath) ? file_get_contents($stubPath) : null;
+        // First check if stubs have been published to the Laravel app
+        $publishedStubPath = base_path("stubs/dbml-to-laravel/$stubName");
+        if (file_exists($publishedStubPath)) {
+            return file_get_contents($publishedStubPath);
+        }
+
+        // Fall back to package stubs
+        $packageStubPath = __DIR__ . "/stubs/$stubName";
+        return file_exists($packageStubPath) ? file_get_contents($packageStubPath) : null;
     }
 
     private function getValidatedStubContent(string $stubName, string $type): ?string
