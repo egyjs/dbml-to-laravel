@@ -30,6 +30,7 @@
         "pestphp/pest": "^2.34",
         "pestphp/pest-plugin-arch": "^2.7",
         "pestphp/pest-plugin-laravel": "^2.3",
+        "phplrt/parser": "*",
         "phplrt/phplrt": "^3.7"
     },
     "autoload": {
