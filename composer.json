@@ -28,10 +28,7 @@
         "nunomaduro/collision": "^8.1.1||^7.10.0",
         "orchestra/testbench": "^9.0.0||^8.22.0",
         "pestphp/pest": "^2.34",
-        "pestphp/pest-plugin-arch": "^2.7",
-        "pestphp/pest-plugin-laravel": "^2.3",
-        "phplrt/parser": "*",
-        "phplrt/phplrt": "^3.7"
+        "pestphp/pest-plugin-arch": "^2.7"
     },
     "autoload": {
         "psr-4": {
