@@ -1,0 +1,36 @@
+name: code-quality
+
+on:
+  push:
+    paths:
+      - '**.php'
+  pull_request:
+    paths:
+      - '**.php'
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+      - name: Install dependencies
+        run: composer install --no-interaction
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse --error-format=github
+
+  pint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+      - name: Install dependencies
+        run: composer install --no-interaction
+      - name: Run Pint
+        run: ./vendor/bin/pint --test
