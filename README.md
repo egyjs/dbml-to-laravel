@@ -77,8 +77,8 @@ php artisan generate:dbml database/schema.dbml
 
 After running the command, the package will generate:
 
-* **Eloquent Models:** In your `app/Models` directory (e.g., `app/Models/User.php`, `app/Models/Post.php`).  
-* **Migration Files:** In your `database/migrations` directory (e.g., `2023_01_01_000000_create_users_table.php`, `2023_01_01_000000_create_posts_table.php`).
+* **Eloquent Models:** In your `app/Models` directory (e.g., `app/Models/User.php`).  
+* **Migration Files:** In your `database/migrations` directory (e.g., `2023_01_01_000000_create_posts_table.php`).
 
 **Example Generated `app/Models/Post.php`:**
 
