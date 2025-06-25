@@ -1,10 +1,13 @@
 # **DBML to Laravel Eloquent Generator ✨**
 
-**Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) diagrams, accelerating Laravel development and streamlining your database schema to code workflow.**
+**Generate Laravel Eloquent models and migration files directly from your DBML diagrams, accelerating Laravel development and streamlining your schema-to-code workflow.**
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/egyjs/dbml-to-laravel.svg?style=flat-square&get)](https://packagist.org/packages/egyjs/dbml-to-laravel)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/run-tests.yml?branch=main\&label=tests\&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
+> 📰 **Featured on [Laravel News](https://laravel-news.com/dbml-to-laravel)** — the official community blog for Laravel developers!
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/egyjs/dbml-to-laravel/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/egyjs/dbml-to-laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
+[![Featured on Laravel News](https://img.shields.io/badge/Laravel%20News-Featured-orange?style=flat-square)](https://laravel-news.com/dbml-to-laravel)
 
 ## **🚀 Motivation**
 
@@ -164,6 +167,10 @@ We welcome contributions! Please see our [CONTRIBUTING.md](/CONTRIBUTING.md) for
 ## **❓ Support**
 
 For questions, bug reports, or feature requests, please open an issue on the [GitHub Issues page](https://github.com/egyjs/dbml-to-laravel/issues). We'll do our best to respond promptly.
+
+---
+
+🎉 _This package was featured by [Laravel News](https://laravel-news.com/dbml-to-laravel). If you find it useful, give it a ⭐ on GitHub and share it with your Laravel team!_
 
 ## **📄 License**
 
