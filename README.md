@@ -39,8 +39,9 @@ php artisan vendor:publish --tag=dbml-to-laravel-stubs
 
 ### **Requirements**
 
-* Laravel 8.x+  
+* Laravel 8.x+
 * PHP 8.0+
+* Node.js 18+ (for the bundled `@dbml/core` parser; run `npm install` in your project to install the JavaScript dependency)
 
 ## **💡 Usage**
 

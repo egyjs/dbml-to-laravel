@@ -2,11 +2,8 @@
 
 namespace Egyjs\DbmlToLaravel\Commands;
 
-use Butschster\Dbml\Ast\Table\ColumnNode;
-use Butschster\Dbml\Ast\TableNode;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use Butschster\Dbml\DbmlParserFactory;
 use Illuminate\Support\Str;
 
 class GenerateFromDbml extends Command
@@ -14,9 +11,9 @@ class GenerateFromDbml extends Command
     protected $signature = 'generate:dbml {file} {--force : Overwrite existing files}';
     protected $description = 'Generate models and migrations from a DBML file';
     /**
-     * @var \Butschster\Dbml\Ast\EnumNode[]
+     * @var array<string, array<int, string>>
      */
-    private array $enums;
+    private array $enums = [];
 
     private const FORBIDDEN_MODEL_NAMES = [
         'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String',
@@ -39,21 +36,18 @@ class GenerateFromDbml extends Command
             return Command::FAILURE;
         }
 
-        try {
-            $parser = DbmlParserFactory::create();
-            $schema = $parser->parse(file_get_contents($file));
-        } catch (\Exception $e) {
-            $this->error("Failed to parse DBML file: " . $e->getMessage());
+        $schema = $this->parseDbmlSchema($file);
+
+        if ($schema === null) {
             return Command::FAILURE;
         }
 
-        // Retrieve enums from the schema for use in migrations
-        $this->enums = $schema->getEnums();
+        $this->enums = $schema['enums'] ?? [];
         $this->migrationCounter = 0; // Reset counter for each run
         $generatedModels = 0;
         $generatedMigrations = 0;
 
-        foreach ($schema->getTables() as $table) {
+        foreach ($schema['tables'] as $table) {
             if ($this->generateModel($table)) {
                 $generatedModels++;
             }
@@ -66,13 +60,13 @@ class GenerateFromDbml extends Command
         return Command::SUCCESS;
     }
 
-    protected function generateModel(TableNode $table): bool
+    protected function generateModel(array $table): bool
     {
-        $modelName = Str::studly(Str::singular($table->getName()));
+        $modelName = Str::studly(Str::singular($table['name']));
 
         // Check if the model name is a reserved PHP keyword
         if ($this->isForbiddenModelName($modelName)) {
-            $this->error("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
+            $this->error("Model \"$modelName\" for table \"{$table['name']}\" cannot be created because it is a reserved PHP keyword.");
             return false;
         }
 
@@ -96,9 +90,9 @@ class GenerateFromDbml extends Command
         return true;
     }
 
-    protected function generateMigration(TableNode $table): bool
+    protected function generateMigration(array $table): bool
     {
-        $migrationName = 'create_' . Str::snake($table->getName()) . '_table';
+        $migrationName = 'create_' . Str::snake($table['name']) . '_table';
 
         // Generate timestamp with incremental counter
         $baseDate = now()->format('Y_m_d');
@@ -109,8 +103,8 @@ class GenerateFromDbml extends Command
         $filePath = database_path("migrations/$fileName");
 
         // Check if migration already exists
-        if (!$this->option('force') && $this->migrationExists($table->getName())) {
-            $this->warn("Migration for table {$table->getName()} already exists. Skipping...");
+        if (!$this->option('force') && $this->migrationExists($table['name'])) {
+            $this->warn("Migration for table {$table['name']} already exists. Skipping...");
             return false;
         }
 
@@ -122,7 +116,7 @@ class GenerateFromDbml extends Command
 
         $this->ensureDirectoryExists(dirname($filePath));
         (new Filesystem)->put($filePath, $content);
-        $this->info("Migration for {$table->getName()} created.");
+        $this->info("Migration for {$table['name']} created.");
 
         // Increment counter for next migration
         $this->migrationCounter++;
@@ -130,9 +124,9 @@ class GenerateFromDbml extends Command
         return true;
     }
 
-    private function generateModelContent(TableNode $table, string $modelName): ?string
+    private function generateModelContent(array $table, string $modelName): ?string
     {
-        $columns = $table->getColumns();
+        $columns = $table['columns'];
         // Generate the fillable attributes for the model
         $fillable = $this->generateFillable($columns);
         // Generate the casts for the model
@@ -140,7 +134,7 @@ class GenerateFromDbml extends Command
         // Generate the relations for the model
         $relations = $this->parseRelations($this->generateRelations($columns));
         // Generate the table property if the table name doesn't follow Laravel conventions
-        $tableProperty = $this->generateTableProperty($table->getName(), $modelName);
+        $tableProperty = $this->generateTableProperty($table['name'], $modelName);
 
         $stub = $this->getValidatedStubContent('model.stub', 'Model');
         if ($stub === null) {
@@ -170,10 +164,10 @@ class GenerateFromDbml extends Command
         );
     }
 
-    private function generateMigrationContent(TableNode $table): ?string
+    private function generateMigrationContent(array $table): ?string
     {
-        $columns = collect($table->getColumns())
-            ->filter(fn(ColumnNode $col) => !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true))
+        $columns = collect($table['columns'])
+            ->filter(fn(array $col) => !in_array($col['name'], ['created_at', 'updated_at', 'id'], true))
             ->values()
             ->toArray();
 
@@ -186,7 +180,7 @@ class GenerateFromDbml extends Command
 
         return str_replace(
             ['{{ tableName }}', '{{ fields }}'],
-            [$table->getName(), $fields],
+            [$table['name'], $fields],
             $stub
         );
     }
@@ -200,7 +194,7 @@ class GenerateFromDbml extends Command
         }
 
         // Fall back to package stubs
-        $packageStubPath = __DIR__ . "/stubs/$stubName";
+        $packageStubPath = __DIR__ . "/../../stubs/$stubName";
         return file_exists($packageStubPath) ? file_get_contents($packageStubPath) : null;
     }
 
@@ -242,6 +236,41 @@ class GenerateFromDbml extends Command
         return !empty($existingMigrations);
     }
 
+    private function parseDbmlSchema(string $file): ?array
+    {
+        $scriptPath = realpath(__DIR__ . '/../../node/dbml-parser.js');
+
+        if ($scriptPath === false || !file_exists($scriptPath)) {
+            $this->error('DBML parser script is missing.');
+            return null;
+        }
+
+        $command = sprintf('node %s %s', escapeshellarg($scriptPath), escapeshellarg($file));
+
+        $output = [];
+        $exitCode = 0;
+        exec($command . ' 2>&1', $output, $exitCode);
+
+        if ($exitCode !== 0) {
+            $this->error('Failed to parse DBML file using Node: ' . implode(PHP_EOL, $output));
+            return null;
+        }
+
+        $schema = json_decode(implode(PHP_EOL, $output), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->error('Invalid JSON returned from DBML parser: ' . json_last_error_msg());
+            return null;
+        }
+
+        if (!isset($schema['tables']) || !is_array($schema['tables'])) {
+            $this->error('Parsed schema is missing table definitions.');
+            return null;
+        }
+
+        return $schema;
+    }
+
     private function ensureDirectoryExists(string $directory): void
     {
         if (!is_dir($directory)) {
@@ -251,23 +280,21 @@ class GenerateFromDbml extends Command
 
     private function generateFillable(array $columns): array
     {
-        // Generate the fillable attributes by filtering out primary keys and certain columns
         return collect($columns)
-            ->filter(fn(ColumnNode $col) =>
-                !$col->isPrimaryKey() &&
-                !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
+            ->filter(fn(array $col) =>
+                empty($col['primary']) &&
+                !in_array($col['name'], ['created_at', 'updated_at', 'id'], true)
             )
-            ->map(fn(ColumnNode $col) => "'" . $col->getName() . "'")
+            ->map(fn(array $col) => "'" . $col['name'] . "'")
             ->values()
             ->toArray();
     }
 
     private function generateCasts(array $columns): array
     {
-        // Generate the casts for the model by filtering out primary keys and default types like string and integer
         return collect($columns)
-            ->mapWithKeys(fn(ColumnNode $col) => [
-                $col->getName() => $this->mapCastType($col->getType()->getName())
+            ->mapWithKeys(fn(array $col) => [
+                $col['name'] => $this->mapCastType($col['type'])
             ])
             ->filter(fn($value) => !empty($value) && !in_array($value, ['string', 'integer'], true))
             ->toArray();
@@ -275,15 +302,16 @@ class GenerateFromDbml extends Command
 
     private function generateRelations(array $columns): array
     {
-        // Generate the relations by mapping foreign key references to related tables
         return collect($columns)
-            ->filter(fn(ColumnNode $col) => $col->getRefs() && count($col->getRefs()) > 0)
-            ->map(function (ColumnNode $col) {
-                $relatedTable = Str::studly(Str::singular($col->getRefs()[0]->getRightTable()->getTable()));
+            ->filter(fn(array $col) => !empty($col['references']))
+            ->map(function (array $col) {
+                $reference = $col['references'][0];
+                $relatedTable = Str::studly(Str::singular($reference['table']));
+
                 return [
                     'method' => Str::camel($relatedTable),
                     'relatedTable' => $relatedTable,
-                    'foreignKey' => $col->getName(),
+                    'foreignKey' => $col['name'],
                 ];
             })
             ->values()
@@ -292,7 +320,6 @@ class GenerateFromDbml extends Command
 
     private function parseRelations(array $relations): string
     {
-        // Convert the relation array into relation methods for the model
         return collect($relations)
             ->map(function ($relation) {
                 $relationMethod = "public function {$relation['method']}()";
@@ -308,36 +335,25 @@ class GenerateFromDbml extends Command
 
     private function generateMigrationFields(array $columns): string
     {
-        // Generate the fields for the migration by mapping column types and handling enums and foreign keys
-        return collect($columns)->map(function (ColumnNode $column) {
-            $type = $this->mapColumnType($column->getType()->getName());
-            $name = $column->getName();
+        return collect($columns)->map(function (array $column) {
+            $type = $this->mapColumnType($column['type']);
+            $name = $column['name'];
 
-            // Handle enum types
-            if (isset($this->enums[$column->getType()->getName()])) {
-                $enumValues = collect($this->enums[$column->getType()->getName()]->getValues())
-                    ->map(fn($value) => $value->getValue())
-                    ->toArray();
-                $enumString = "'" . implode("', '", $enumValues) . "'";
+            if (isset($this->enums[$column['type']])) {
+                $enumString = "'" . implode("', '", $this->enums[$column['type']]) . "'";
                 $field = "\$table->enum('$name', [$enumString])";
-            }
-            // Handle foreign keys
-            elseif ($column->getRefs() && count($column->getRefs()) > 0) {
-                $referencedTable = $column->getRefs()[0]->getRightTable()->getTable();
+            } elseif (!empty($column['references'])) {
+                $referencedTable = $column['references'][0]['table'];
                 $field = "\$table->foreignId('$name')->constrained('$referencedTable')";
-            }
-            // Handle regular fields
-            else {
+            } else {
                 $field = "\$table->$type('$name')";
             }
 
-            // Add nullable constraint (commented out due to parser library limitations)
-            // if ($column->isNull()) {
-            //     $field .= '->nullable()';
-            // }
+            if ($column['nullable'] ?? false) {
+                $field .= '->nullable()';
+            }
 
-            // Add primary key constraint
-            if ($column->isPrimaryKey()) {
+            if (!empty($column['primary'])) {
                 $field .= '->primary()';
             }
 
@@ -349,7 +365,8 @@ class GenerateFromDbml extends Command
     {
         // Map the DBML column types to Laravel migration types
         return match (strtolower($type)) {
-            'int', 'integer' => 'integer',
+            'int', 'integer', 'serial' => 'integer',
+            'bigserial' => 'bigInteger',
             'text', 'longtext' => 'text',
             'bool', 'boolean' => 'boolean',
             'timestamp', 'datetime' => 'timestamp',
@@ -366,6 +383,7 @@ class GenerateFromDbml extends Command
             'char' => 'char',
             'uuid' => 'uuid',
             'morph' => 'morphs',
+            'string', 'varchar', 'character varying' => 'string',
             default => 'string',
         };
     }

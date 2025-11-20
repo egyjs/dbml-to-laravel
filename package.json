@@ -1,0 +1,19 @@
+{
+  "name": "dbml-to-laravel",
+  "version": "1.0.0",
+  "description": "**Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) diagrams, accelerating Laravel development and streamlining your schema-to-code workflow.**",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@dbml/core": "^5.2.0"
+  }
+}
