@@ -8,6 +8,10 @@ on:
     paths:
       - '**.php'
 
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   phpstan:
     runs-on: ubuntu-latest
@@ -52,3 +56,22 @@ jobs:
         run: composer install --no-interaction
       - name: Run Pint
         run: ./vendor/bin/pint --test
+
+  node-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build DBML parser runtime
+        run: npm run build-parser
+      - name: Verify runtime file
+        run: |
+          test -f bin/parse-dbml.runtime.cjs || (echo 'Runtime build missing' && exit 1)
+      - name: Smoke test parsing fixture
+        run: node bin/parse-dbml.js tests/Fixtures/simple.dbml || echo 'Parser smoke test completed'

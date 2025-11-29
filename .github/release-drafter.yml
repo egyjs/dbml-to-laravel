@@ -1,0 +1,23 @@
+name-template: 'v$NEXT_PATCH_VERSION'
+Tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: '🚀 Features'
+    labels:
+      - feature
+  - title: '🐛 Fixes'
+    labels:
+      - bug
+  - title: '🧰 Maintenance'
+    labels:
+      - chore
+  - title: '📝 Docs'
+    labels:
+      - documentation
+change-template: '- $TITLE (#$NUMBER)'
+no-changes-template: 'No significant changes.'
+template: |
+  ## Changes
+  $CHANGES
+
+  ## Contributors
+  $CONTRIBUTORS
