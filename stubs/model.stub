@@ -18,5 +18,5 @@ class {{ modelName }} extends Model
         {{ casts }}
     ];
 
-    {{ relations }}
+{{ relations }}
 }

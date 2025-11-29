@@ -40,7 +40,8 @@ php artisan vendor:publish --tag=dbml-to-laravel-stubs
 ### **Requirements**
 
 * Laravel 8.x+  
-* PHP 8.0+
+* PHP 8.0+  
+* Node.js 18+ runtime (the DBML parser is pre-bundled, so you never need to run `npm install` in your project)
 
 ## **💡 Usage**
 
@@ -159,6 +160,17 @@ return new class extends Migration
 ## **⚙️ Customization**
 
 You can modify the generated model and migration templates by editing the stub files located in `stubs/dbml-to-laravel/` after publishing them. This allows you to tailor the output to your specific project needs, including adding custom traits, interfaces, or modifying default property definitions.
+
+### Updating the bundled DBML parser (contributors only)
+
+The published package already includes a fully bundled parser, so consumers never have to install Node dependencies. If you change `bin/parse-dbml.js`, run the following before opening a PR:
+
+```bash
+npm install
+npm run build-parser
+```
+
+Commit both the updated source file and the generated `bin/parse-dbml.runtime.cjs` artifact so downstream users continue to benefit from the prepackaged parser.
 
 ## **🤝 Contributing**
 

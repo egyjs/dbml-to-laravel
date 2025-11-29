@@ -1,0 +1,18 @@
+Table users {
+  id int [pk]
+  name varchar
+  role user_role
+  country_code varchar
+}
+
+Table countries {
+  code varchar [pk]
+  name varchar
+}
+
+Enum user_role {
+  admin
+  editor
+}
+
+Ref: users.country_code > countries.code

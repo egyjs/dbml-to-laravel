@@ -43,6 +43,7 @@ git checkout -b feature/your-awesome-feature
 ```bash
 composer install
 ```
+   The package ships with a pre-bundled DBML parser, so running `npm install` is only required when you modify `bin/parse-dbml.js`. After making parser changes execute `npm run build-parser` and commit the regenerated `bin/parse-dbml.runtime.cjs` alongside your updates.
 5. **Write tests (if applicable):** If you're fixing a bug, write a test that reproduces the bug. If you're adding a new feature, write tests to cover its functionality.
 ```bash
 # Run all tests

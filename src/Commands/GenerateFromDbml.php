@@ -2,21 +2,28 @@
 
 namespace Egyjs\DbmlToLaravel\Commands;
 
-use Butschster\Dbml\Ast\Table\ColumnNode;
-use Butschster\Dbml\Ast\TableNode;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\Column;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnDefaultValue;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\EnumDefinition;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
+use Egyjs\DbmlToLaravel\Parsing\NodeDbmlParser;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use Butschster\Dbml\DbmlParserFactory;
 use Illuminate\Support\Str;
+use Throwable;
 
 class GenerateFromDbml extends Command
 {
     protected $signature = 'generate:dbml {file} {--force : Overwrite existing files}';
     protected $description = 'Generate models and migrations from a DBML file';
     /**
-     * @var \Butschster\Dbml\Ast\EnumNode[]
+     * @var array<string, EnumDefinition>
      */
-    private array $enums;
+    private array $enums = [];
+    private Schema $schema;
 
     private const FORBIDDEN_MODEL_NAMES = [
         'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String',
@@ -36,17 +43,18 @@ class GenerateFromDbml extends Command
         // Check if the provided file exists
         if (!file_exists($file)) {
             $this->error("File not found: $file");
-            return Command::FAILURE;
+            return static::FAILURE;
         }
 
         try {
-            $parser = DbmlParserFactory::create();
-            $schema = $parser->parse(file_get_contents($file));
-        } catch (\Exception $e) {
+            $parser = new NodeDbmlParser();
+            $schema = $parser->parse($file);
+        } catch (Throwable $e) {
             $this->error("Failed to parse DBML file: " . $e->getMessage());
-            return Command::FAILURE;
+            return static::FAILURE;
         }
 
+        $this->schema = $schema;
         // Retrieve enums from the schema for use in migrations
         $this->enums = $schema->getEnums();
         $this->migrationCounter = 0; // Reset counter for each run
@@ -63,10 +71,10 @@ class GenerateFromDbml extends Command
         }
 
         $this->info("Generated $generatedModels models and $generatedMigrations migrations successfully.");
-        return Command::SUCCESS;
+        return static::SUCCESS;
     }
 
-    protected function generateModel(TableNode $table): bool
+    protected function generateModel(Table $table): bool
     {
         $modelName = Str::studly(Str::singular($table->getName()));
 
@@ -96,7 +104,7 @@ class GenerateFromDbml extends Command
         return true;
     }
 
-    protected function generateMigration(TableNode $table): bool
+    protected function generateMigration(Table $table): bool
     {
         $migrationName = 'create_' . Str::snake($table->getName()) . '_table';
 
@@ -130,7 +138,7 @@ class GenerateFromDbml extends Command
         return true;
     }
 
-    private function generateModelContent(TableNode $table, string $modelName): ?string
+    private function generateModelContent(Table $table, string $modelName): ?string
     {
         $columns = $table->getColumns();
         // Generate the fillable attributes for the model
@@ -138,7 +146,10 @@ class GenerateFromDbml extends Command
         // Generate the casts for the model
         $casts = $this->generateCasts($columns);
         // Generate the relations for the model
-        $relations = $this->parseRelations($this->generateRelations($columns));
+        $relations = $this->parseRelations(array_merge(
+            $this->generateBelongsToRelations($columns),
+            $this->generateHasManyRelations($table)
+        ));
         // Generate the table property if the table name doesn't follow Laravel conventions
         $tableProperty = $this->generateTableProperty($table->getName(), $modelName);
 
@@ -170,14 +181,10 @@ class GenerateFromDbml extends Command
         );
     }
 
-    private function generateMigrationContent(TableNode $table): ?string
+    private function generateMigrationContent(Table $table): ?string
     {
-        $columns = collect($table->getColumns())
-            ->filter(fn(ColumnNode $col) => !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true))
-            ->values()
-            ->toArray();
-
-        $fields = $this->generateMigrationFields($columns);
+        $columnDefinitions = $this->generateMigrationColumns($table->getColumns());
+        $indexDefinitions = $this->generateIndexDefinitions($table);
 
         $stub = $this->getValidatedStubContent('migration.stub', 'Migration');
         if ($stub === null) {
@@ -185,8 +192,8 @@ class GenerateFromDbml extends Command
         }
 
         return str_replace(
-            ['{{ tableName }}', '{{ fields }}'],
-            [$table->getName(), $fields],
+            ['{{ tableName }}', '{{ columns }}', '{{ indexes }}'],
+            [$table->getName(), $columnDefinitions, $indexDefinitions],
             $stub
         );
     }
@@ -200,7 +207,7 @@ class GenerateFromDbml extends Command
         }
 
         // Fall back to package stubs
-        $packageStubPath = __DIR__ . "/stubs/$stubName";
+        $packageStubPath = __DIR__ . "/../../stubs/$stubName";
         return file_exists($packageStubPath) ? file_get_contents($packageStubPath) : null;
     }
 
@@ -253,134 +260,288 @@ class GenerateFromDbml extends Command
     {
         // Generate the fillable attributes by filtering out primary keys and certain columns
         return collect($columns)
-            ->filter(fn(ColumnNode $col) =>
+            ->filter(fn(Column $col) =>
                 !$col->isPrimaryKey() &&
                 !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
             )
-            ->map(fn(ColumnNode $col) => "'" . $col->getName() . "'")
+            ->map(fn(Column $col) => "'" . $col->getName() . "'")
             ->values()
             ->toArray();
     }
 
     private function generateCasts(array $columns): array
     {
-        // Generate the casts for the model by filtering out primary keys and default types like string and integer
         return collect($columns)
-            ->mapWithKeys(fn(ColumnNode $col) => [
-                $col->getName() => $this->mapCastType($col->getType()->getName())
+            ->mapWithKeys(fn(Column $col) => [
+                $col->getName() => $this->mapCastType($col)
             ])
             ->filter(fn($value) => !empty($value) && !in_array($value, ['string', 'integer'], true))
             ->toArray();
     }
 
-    private function generateRelations(array $columns): array
+    private function generateBelongsToRelations(array $columns): array
     {
-        // Generate the relations by mapping foreign key references to related tables
         return collect($columns)
-            ->filter(fn(ColumnNode $col) => $col->getRefs() && count($col->getRefs()) > 0)
-            ->map(function (ColumnNode $col) {
-                $relatedTable = Str::studly(Str::singular($col->getRefs()[0]->getRightTable()->getTable()));
+            ->filter(fn(Column $col) => count($col->getRefs()) > 0)
+            ->map(function (Column $col) {
+                $reference = $col->getRefs()[0];
+                $relatedTable = Str::studly(Str::singular($reference->getRightTable()->getTable()));
+
                 return [
+                    'type' => 'belongsTo',
                     'method' => Str::camel($relatedTable),
                     'relatedTable' => $relatedTable,
                     'foreignKey' => $col->getName(),
+                    'ownerKey' => $reference->getReferencedColumn(),
                 ];
             })
             ->values()
             ->toArray();
     }
 
+    private function generateHasManyRelations(Table $table): array
+    {
+        $relations = [];
+
+        foreach ($this->schema->getTables() as $candidate) {
+            foreach ($candidate->getColumns() as $column) {
+                foreach ($column->getRefs() as $reference) {
+                    if (strcasecmp($reference->getRightTable()->getTable(), $table->getName()) !== 0) {
+                        continue;
+                    }
+
+                    $relatedTable = Str::studly(Str::singular($candidate->getName()));
+                    $method = Str::camel(Str::studly(Str::plural($relatedTable)));
+                    $key = $method . ':' . $candidate->getName();
+
+                    if (isset($relations[$key])) {
+                        continue;
+                    }
+
+                    $relations[$key] = [
+                        'type' => 'hasMany',
+                        'method' => $method,
+                        'relatedTable' => $relatedTable,
+                        'foreignKey' => $column->getName(),
+                        'localKey' => $reference->getReferencedColumn() ?? 'id',
+                    ];
+                }
+            }
+        }
+
+        return array_values($relations);
+    }
+
     private function parseRelations(array $relations): string
     {
-        // Convert the relation array into relation methods for the model
+        if (empty($relations)) {
+            return '';
+        }
+
         return collect($relations)
-            ->map(function ($relation) {
-                $relationMethod = "public function {$relation['method']}()";
-                $relationBody = "return \$this->belongsTo({$relation['relatedTable']}::class, '{$relation['foreignKey']}');";
-                return "$relationMethod
-    {
-        $relationBody
-    }
-";
+            ->map(function (array $relation) {
+                $methodSignature = "    public function {$relation['method']}()";
+                $body = $this->formatRelationBody($relation);
+
+                return "$methodSignature\n    {\n        $body\n    }\n";
             })
-            ->implode("\n\t");
+            ->implode("\n");
     }
 
-    private function generateMigrationFields(array $columns): string
+    private function formatRelationBody(array $relation): string
     {
-        // Generate the fields for the migration by mapping column types and handling enums and foreign keys
-        return collect($columns)->map(function (ColumnNode $column) {
-            $type = $this->mapColumnType($column->getType()->getName());
-            $name = $column->getName();
-
-            // Handle enum types
-            if (isset($this->enums[$column->getType()->getName()])) {
-                $enumValues = collect($this->enums[$column->getType()->getName()]->getValues())
-                    ->map(fn($value) => $value->getValue())
-                    ->toArray();
-                $enumString = "'" . implode("', '", $enumValues) . "'";
-                $field = "\$table->enum('$name', [$enumString])";
-            }
-            // Handle foreign keys
-            elseif ($column->getRefs() && count($column->getRefs()) > 0) {
-                $referencedTable = $column->getRefs()[0]->getRightTable()->getTable();
-                $field = "\$table->foreignId('$name')->constrained('$referencedTable')";
-            }
-            // Handle regular fields
-            else {
-                $field = "\$table->$type('$name')";
-            }
-
-            // Add nullable constraint (commented out due to parser library limitations)
-            // if ($column->isNull()) {
-            //     $field .= '->nullable()';
-            // }
-
-            // Add primary key constraint
-            if ($column->isPrimaryKey()) {
-                $field .= '->primary()';
-            }
-
-            return "            $field;";
-        })->implode("\n");
-    }
-
-    protected function mapColumnType(string $type): string
-    {
-        // Map the DBML column types to Laravel migration types
-        return match (strtolower($type)) {
-            'int', 'integer' => 'integer',
-            'text', 'longtext' => 'text',
-            'bool', 'boolean' => 'boolean',
-            'timestamp', 'datetime' => 'timestamp',
-            'decimal' => 'decimal',
-            'json' => 'json',
-            'enum' => 'enum',
-            'date' => 'date',
-            'time' => 'time',
-            'float' => 'float',
-            'double' => 'double',
-            'bigint' => 'bigInteger',
-            'smallint' => 'smallInteger',
-            'tinyint' => 'tinyInteger',
-            'char' => 'char',
-            'uuid' => 'uuid',
-            'morph' => 'morphs',
-            default => 'string',
+        return match ($relation['type']) {
+            'hasMany' => "return \$this->hasMany({$relation['relatedTable']}::class, '{$relation['foreignKey']}', '{$relation['localKey']}');",
+            default => "return \$this->belongsTo({$relation['relatedTable']}::class, '{$relation['foreignKey']}'" . ($relation['ownerKey'] ? ", '{$relation['ownerKey']}'" : '') . ');',
         };
     }
 
-    protected function mapCastType(string $type): string
+    private function generateMigrationColumns(array $columns): string
     {
-        // Map the DBML column types to Laravel model casts
-        return match (strtolower($type)) {
+        return collect($columns)
+            ->map(fn(Column $column) => $this->buildColumnDefinition($column))
+            ->implode("\n");
+    }
+
+    private function generateIndexDefinitions(Table $table): string
+    {
+        $definitions = collect($table->getIndexes())
+            ->map(fn(IndexDefinition $index) => $this->buildIndexDefinition($index))
+            ->filter()
+            ->implode("\n");
+
+        return $definitions === '' ? '' : "\n" . $definitions;
+    }
+
+    private function buildColumnDefinition(Column $column): string
+    {
+        $field = $this->resolveColumnBaseDefinition($column);
+
+        if ($column->isNull()) {
+            $field .= '->nullable()';
+        }
+
+        if ($column->getDefaultValue() !== null) {
+            $field .= '->default(' . $this->formatDefaultValue($column->getDefaultValue()) . ')';
+        }
+
+        if ($column->isUnique() && !$column->isPrimaryKey()) {
+            $field .= '->unique()';
+        }
+
+        if ($column->isPrimaryKey() && !$this->isAutoIncrementingPrimaryKey($column)) {
+            $field .= '->primary()';
+        }
+
+        return "            {$field};";
+    }
+
+    private function buildIndexDefinition(IndexDefinition $index): ?string
+    {
+        if (empty($index->getColumns()) || in_array($index->getType(), ['pk', 'primary'], true)) {
+            return null;
+        }
+
+        $columns = '[' . implode(', ', array_map(fn(string $column) => "'{$column}'", $index->getColumns())) . ']';
+        $method = $index->isUnique() ? 'unique' : 'index';
+        $name = $index->getName() ? ", '{$index->getName()}'" : '';
+
+        return "            \$table->{$method}({$columns}{$name});";
+    }
+
+    private function resolveColumnBaseDefinition(Column $column): string
+    {
+        $name = $column->getName();
+        $type = strtolower($column->getType()->getName());
+        $args = $column->getType()->getArgs();
+
+        if ($this->isAutoIncrementingPrimaryKey($column)) {
+            return match (true) {
+                str_contains($type, 'big') => "\$table->bigIncrements('$name')",
+                str_contains($type, 'small') => "\$table->smallIncrements('$name')",
+                default => "\$table->increments('$name')",
+            };
+        }
+
+        if (isset($this->enums[$column->getType()->getName()])) {
+            $enumValues = collect($this->enums[$column->getType()->getName()]->getValues())
+                ->map(fn($value) => "'{$value->getValue()}'")
+                ->implode(', ');
+
+            return "\$table->enum('$name', [$enumValues])";
+        }
+
+        if ($reference = $column->getRefs()[0] ?? null) {
+            $referencedTable = $reference->getRightTable()->getTable();
+            $referencedColumn = $reference->getReferencedColumn();
+            $constraint = $referencedColumn && $referencedColumn !== 'id'
+                ? "->constrained('{$referencedTable}', '{$referencedColumn}')"
+                : "->constrained('{$referencedTable}')";
+
+            $definition = "\$table->foreignId('$name'){$constraint}";
+            return $definition . $this->formatForeignKeyActions($reference);
+        }
+
+        $stringLength = max(1, (int) ($args[0] ?? 255));
+        $charLength = max(1, (int) ($args[0] ?? 255));
+        $precision = max(1, (int) ($args[0] ?? 8));
+        $scale = max(0, (int) ($args[1] ?? 2));
+
+        return match ($type) {
+            'varchar', 'string' => "\$table->string('$name', {$stringLength})",
+            'char' => "\$table->char('$name', {$charLength})",
+            'uuid' => "\$table->uuid('$name')",
+            'text', 'longtext' => "\$table->text('$name')",
+            'json', 'jsonb' => "\$table->json('$name')",
+            'timestamptz', 'timestampz', 'timestamp with time zone' => "\$table->timestampTz('$name')",
+            'timestamp', 'datetime' => "\$table->timestamp('$name')",
+            'date' => "\$table->date('$name')",
+            'time' => "\$table->time('$name')",
+            'boolean', 'bool' => "\$table->boolean('$name')",
+            'double' => "\$table->double('$name')",
+            'float' => "\$table->float('$name')",
+            'numeric', 'decimal' => "\$table->decimal('$name', {$precision}, {$scale})",
+            'bigint', 'bigserial' => "\$table->bigInteger('$name')",
+            'smallint', 'smallserial' => "\$table->smallInteger('$name')",
+            'tinyint' => "\$table->tinyInteger('$name')",
+            'serial', 'int', 'integer' => "\$table->integer('$name')",
+            default => "\$table->string('$name')",
+        };
+    }
+
+    private function formatDefaultValue(?ColumnDefaultValue $default): string
+    {
+        if ($default === null) {
+            return "null";
+        }
+
+        $value = $default->getValue();
+
+        if ($default->isExpression() && is_string($value)) {
+            return "DB::raw('" . addslashes($value) . "')";
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        if ($value === null) {
+            return 'null';
+        }
+
+        return "'" . addslashes((string) $value) . "'";
+    }
+
+    private function formatForeignKeyActions(ColumnReference $reference): string
+    {
+        $actions = '';
+
+        if ($reference->getOnDelete()) {
+            $actions .= $this->mapForeignAction('delete', $reference->getOnDelete());
+        }
+
+        if ($reference->getOnUpdate()) {
+            $actions .= $this->mapForeignAction('update', $reference->getOnUpdate());
+        }
+
+        return $actions;
+    }
+
+    private function mapForeignAction(string $operation, string $action): string
+    {
+        $operationMethod = ucfirst($operation);
+
+        return match (strtolower($action)) {
+            'cascade' => "->cascadeOn{$operationMethod}()",
+            'restrict' => "->restrictOn{$operationMethod}()",
+            'set null' => "->nullOn{$operationMethod}()",
+            default => '',
+        };
+    }
+
+    private function isAutoIncrementingPrimaryKey(Column $column): bool
+    {
+        return $column->isPrimaryKey() && $column->isAutoIncrement();
+    }
+
+    private function mapCastType(Column $column): string
+    {
+        $type = strtolower($column->getType()->getName());
+        $args = $column->getType()->getArgs();
+
+        return match ($type) {
             'bool', 'boolean' => 'boolean',
-            'decimal', 'float', 'double' => 'float',
-            'json' => 'array',
-            'timestamp', 'datetime' => 'datetime',
+            'json', 'jsonb' => 'array',
+            'timestamp', 'datetime', 'timestamptz', 'timestampz', 'timestamp with time zone' => 'datetime',
             'date' => 'date',
-            'time' => 'time',
+            'time' => 'datetime',
             'int', 'integer', 'bigint', 'smallint', 'tinyint' => 'integer',
+            'decimal', 'numeric' => isset($args[1]) ? 'decimal:' . (int) $args[1] : 'float',
+            'double', 'float' => 'float',
             default => '',
         };
     }
@@ -393,7 +554,7 @@ class GenerateFromDbml extends Command
         $expectedTableName = Str::snake(Str::plural($modelName));
 
         if ($tableName !== $expectedTableName) {
-            return "protected \$table = '$tableName';\n";
+            return "protected \$table = '$tableName';";
         }
 
         return '';
