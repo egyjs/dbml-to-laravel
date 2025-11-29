@@ -9,10 +9,9 @@ class ColumnDefaultValue
     public function __construct(
         private readonly mixed $value,
         private readonly ?string $type = null
-    ) {
-    }
+    ) {}
 
-    public static function fromArray(null|array $payload): ?self
+    public static function fromArray(?array $payload): ?self
     {
         if ($payload === null) {
             return null;

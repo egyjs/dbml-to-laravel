@@ -7,13 +7,13 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 
 it('generates models and migrations from DBML', function () {
-    $filesystem = new Filesystem();
-    $baseTempPath = base_path('tests/.tmp/' . uniqid('dbml_', true));
-    $appPath = $baseTempPath . '/app';
-    $databasePath = $baseTempPath . '/database';
+    $filesystem = new Filesystem;
+    $baseTempPath = base_path('tests/.tmp/'.uniqid('dbml_', true));
+    $appPath = $baseTempPath.'/app';
+    $databasePath = $baseTempPath.'/database';
 
-    $filesystem->makeDirectory($appPath . '/Models', 0755, true, true);
-    $filesystem->makeDirectory($databasePath . '/migrations', 0755, true, true);
+    $filesystem->makeDirectory($appPath.'/Models', 0755, true, true);
+    $filesystem->makeDirectory($databasePath.'/migrations', 0755, true, true);
 
     $application = app();
     $originalAppPath = $application->path();
@@ -25,18 +25,18 @@ it('generates models and migrations from DBML', function () {
     Carbon::setTestNow(Carbon::create(2024, 1, 2, 10));
 
     try {
-        $fixture = __DIR__ . '/../Fixtures/simple.dbml';
+        $fixture = __DIR__.'/../Fixtures/simple.dbml';
 
         $this->artisan('generate:dbml', ['file' => $fixture, '--force' => true])
             ->assertExitCode(Command::SUCCESS);
 
-        expect(file_exists($appPath . '/Models/User.php'))->toBeTrue();
+        expect(file_exists($appPath.'/Models/User.php'))->toBeTrue();
 
-        $migrationFiles = glob($databasePath . '/migrations/*.php');
+        $migrationFiles = glob($databasePath.'/migrations/*.php');
         expect($migrationFiles)->toHaveCount(2);
 
         $usersMigration = collect($migrationFiles)
-            ->first(fn(string $file) => str_contains($file, 'create_users_table'));
+            ->first(fn (string $file) => str_contains($file, 'create_users_table'));
 
         expect($usersMigration)->not->toBeNull();
 

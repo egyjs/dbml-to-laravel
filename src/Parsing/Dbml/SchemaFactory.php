@@ -38,7 +38,7 @@ class SchemaFactory
             }
 
             $indexes = array_map(
-                fn(array $indexData) => new IndexDefinition(
+                fn (array $indexData) => new IndexDefinition(
                     $indexData['name'] ?? null,
                     self::normalizeIndexColumns($indexData['columns'] ?? []),
                     (bool) ($indexData['unique'] ?? false),
@@ -46,7 +46,7 @@ class SchemaFactory
                 ),
                 array_filter(
                     $tableData['indexes'] ?? [],
-                    fn(array $indexData) => !empty($indexData['columns'])
+                    fn (array $indexData) => ! empty($indexData['columns'])
                 )
             );
 
@@ -70,7 +70,7 @@ class SchemaFactory
     }
 
     /**
-     * @param array<string, Column> $columnIndex
+     * @param  array<string, Column>  $columnIndex
      */
     private static function attachReferences(array $refs, array $columnIndex): void
     {
@@ -102,7 +102,7 @@ class SchemaFactory
                     (string) $columnName
                 );
 
-                if (!isset($columnIndex[$key])) {
+                if (! isset($columnIndex[$key])) {
                     continue;
                 }
 
@@ -114,16 +114,16 @@ class SchemaFactory
     private static function normalizeIndexColumns(array $columns): array
     {
         return array_values(array_filter(array_map(
-            fn($column) => is_array($column)
+            fn ($column) => is_array($column)
                 ? (string) ($column['name'] ?? $column['value'] ?? '')
                 : (string) $column,
             $columns
-        ), fn(string $column) => $column !== ''));
+        ), fn (string $column) => $column !== ''));
     }
 
     private static function columnKey(string $schema, string $table, string $column): string
     {
-        return strtolower($schema . '.' . $table . '.' . $column);
+        return strtolower($schema.'.'.$table.'.'.$column);
     }
 
     private static function determineDirection(array $first, array $second): ?array

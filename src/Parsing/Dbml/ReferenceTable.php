@@ -7,10 +7,9 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class ReferenceTable
 {
     public function __construct(
-        private string  $table,
+        private string $table,
         private ?string $schema = null
-    ) {
-    }
+    ) {}
 
     public function getTable(): string
     {

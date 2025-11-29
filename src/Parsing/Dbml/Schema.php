@@ -7,14 +7,13 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class Schema
 {
     /**
-     * @param Table[] $tables
-     * @param array<string, EnumDefinition> $enums
+     * @param  Table[]  $tables
+     * @param  array<string, EnumDefinition>  $enums
      */
     public function __construct(
         private array $tables,
         private array $enums
-    ) {
-    }
+    ) {}
 
     /**
      * @return Table[]

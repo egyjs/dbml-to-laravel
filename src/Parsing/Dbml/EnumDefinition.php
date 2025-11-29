@@ -7,13 +7,12 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class EnumDefinition
 {
     /**
-     * @param EnumValue[] $values
+     * @param  EnumValue[]  $values
      */
     public function __construct(
         private string $name,
-        private array  $values
-    ) {
-    }
+        private array $values
+    ) {}
 
     public function getName(): string
     {

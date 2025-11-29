@@ -11,8 +11,7 @@ readonly class ColumnReference
         private ?string $referencedColumn = null,
         private ?string $onDelete = null,
         private ?string $onUpdate = null
-    ) {
-    }
+    ) {}
 
     public function getRightTable(): ReferenceTable
     {

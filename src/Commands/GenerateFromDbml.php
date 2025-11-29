@@ -18,17 +18,20 @@ use Throwable;
 class GenerateFromDbml extends Command
 {
     protected $signature = 'generate:dbml {file} {--force : Overwrite existing files}';
+
     protected $description = 'Generate models and migrations from a DBML file';
+
     /**
      * @var array<string, EnumDefinition>
      */
     private array $enums = [];
+
     private Schema $schema;
 
     private const FORBIDDEN_MODEL_NAMES = [
         'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String',
         'Array', 'Float', 'Int', 'Bool', 'Boolean', 'Null', 'Void', 'Iterable',
-        'Parent', 'Self', 'Static', 'Mixed'
+        'Parent', 'Self', 'Static', 'Mixed',
     ];
 
     /**
@@ -41,16 +44,18 @@ class GenerateFromDbml extends Command
         $file = $this->argument('file');
 
         // Check if the provided file exists
-        if (!file_exists($file)) {
+        if (! file_exists($file)) {
             $this->error("File not found: $file");
+
             return static::FAILURE;
         }
 
         try {
-            $parser = new NodeDbmlParser();
+            $parser = new NodeDbmlParser;
             $schema = $parser->parse($file);
         } catch (Throwable $e) {
-            $this->error("Failed to parse DBML file: " . $e->getMessage());
+            $this->error('Failed to parse DBML file: '.$e->getMessage());
+
             return static::FAILURE;
         }
 
@@ -71,6 +76,7 @@ class GenerateFromDbml extends Command
         }
 
         $this->info("Generated $generatedModels models and $generatedMigrations migrations successfully.");
+
         return static::SUCCESS;
     }
 
@@ -81,19 +87,20 @@ class GenerateFromDbml extends Command
         // Check if the model name is a reserved PHP keyword
         if ($this->isForbiddenModelName($modelName)) {
             $this->error("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
+
             return false;
         }
 
         $filePath = app_path("Models/$modelName.php");
 
-        if (!$this->option('force') && $this->modelExists($filePath, $modelName)) {
+        if (! $this->option('force') && $this->modelExists($filePath, $modelName)) {
             return false;
         }
 
         // Generate the content for the model
         $content = $this->generateModelContent($table, $modelName);
 
-        if (!$content) {
+        if (! $content) {
             return false;
         }
 
@@ -106,25 +113,26 @@ class GenerateFromDbml extends Command
 
     protected function generateMigration(Table $table): bool
     {
-        $migrationName = 'create_' . Str::snake($table->getName()) . '_table';
+        $migrationName = 'create_'.Str::snake($table->getName()).'_table';
 
         // Generate timestamp with incremental counter
         $baseDate = now()->format('Y_m_d');
         $sequence = str_pad($this->migrationCounter, 6, '0', STR_PAD_LEFT);
-        $timestamp = $baseDate . '_' . $sequence;
+        $timestamp = $baseDate.'_'.$sequence;
 
-        $fileName = $timestamp . '_' . $migrationName . '.php';
+        $fileName = $timestamp.'_'.$migrationName.'.php';
         $filePath = database_path("migrations/$fileName");
 
         // Check if migration already exists
-        if (!$this->option('force') && $this->migrationExists($table->getName())) {
+        if (! $this->option('force') && $this->migrationExists($table->getName())) {
             $this->warn("Migration for table {$table->getName()} already exists. Skipping...");
+
             return false;
         }
 
         $content = $this->generateMigrationContent($table);
 
-        if (!$content) {
+        if (! $content) {
             return false;
         }
 
@@ -161,16 +169,16 @@ class GenerateFromDbml extends Command
         $tab = str_repeat("\t", 2);
         $castsString = '';
 
-        if (!empty($casts)) {
+        if (! empty($casts)) {
             $castsString = implode(",\n$tab", array_map(
-                fn($key, $value) => "'$key' => '$value'",
+                fn ($key, $value) => "'$key' => '$value'",
                 array_keys($casts),
                 $casts
             ));
         }
 
         $fillableString = '';
-        if (!empty($fillable)) {
+        if (! empty($fillable)) {
             $fillableString = implode(",\n$tab", $fillable);
         }
 
@@ -207,7 +215,8 @@ class GenerateFromDbml extends Command
         }
 
         // Fall back to package stubs
-        $packageStubPath = __DIR__ . "/../../stubs/$stubName";
+        $packageStubPath = __DIR__."/../../stubs/$stubName";
+
         return file_exists($packageStubPath) ? file_get_contents($packageStubPath) : null;
     }
 
@@ -216,8 +225,10 @@ class GenerateFromDbml extends Command
         $stub = $this->getStubContent($stubName);
         if ($stub === null) {
             $this->error("$type stub not found.");
+
             return null;
         }
+
         return $stub;
     }
 
@@ -231,27 +242,30 @@ class GenerateFromDbml extends Command
         // Check if the model file already exists
         if (file_exists($filePath)) {
             $this->warn("Model $modelName already exists. Use --force to overwrite.");
+
             return true;
         }
+
         return false;
     }
 
     private function migrationExists(string $tableName): bool
     {
-        $migrationPattern = '*_create_' . Str::snake($tableName) . '_table.php';
+        $migrationPattern = '*_create_'.Str::snake($tableName).'_table.php';
         $migrationPath = database_path('migrations');
 
-        if (!is_dir($migrationPath)) {
+        if (! is_dir($migrationPath)) {
             return false;
         }
 
-        $existingMigrations = glob($migrationPath . '/' . $migrationPattern);
-        return !empty($existingMigrations);
+        $existingMigrations = glob($migrationPath.'/'.$migrationPattern);
+
+        return ! empty($existingMigrations);
     }
 
     private function ensureDirectoryExists(string $directory): void
     {
-        if (!is_dir($directory)) {
+        if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
     }
@@ -260,11 +274,10 @@ class GenerateFromDbml extends Command
     {
         // Generate the fillable attributes by filtering out primary keys and certain columns
         return collect($columns)
-            ->filter(fn(Column $col) =>
-                !$col->isPrimaryKey() &&
-                !in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
+            ->filter(fn (Column $col) => ! $col->isPrimaryKey() &&
+                ! in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
             )
-            ->map(fn(Column $col) => "'" . $col->getName() . "'")
+            ->map(fn (Column $col) => "'".$col->getName()."'")
             ->values()
             ->toArray();
     }
@@ -272,17 +285,17 @@ class GenerateFromDbml extends Command
     private function generateCasts(array $columns): array
     {
         return collect($columns)
-            ->mapWithKeys(fn(Column $col) => [
-                $col->getName() => $this->mapCastType($col)
+            ->mapWithKeys(fn (Column $col) => [
+                $col->getName() => $this->mapCastType($col),
             ])
-            ->filter(fn($value) => !empty($value) && !in_array($value, ['string', 'integer'], true))
+            ->filter(fn ($value) => ! empty($value) && ! in_array($value, ['string', 'integer'], true))
             ->toArray();
     }
 
     private function generateBelongsToRelations(array $columns): array
     {
         return collect($columns)
-            ->filter(fn(Column $col) => count($col->getRefs()) > 0)
+            ->filter(fn (Column $col) => count($col->getRefs()) > 0)
             ->map(function (Column $col) {
                 $reference = $col->getRefs()[0];
                 $relatedTable = Str::studly(Str::singular($reference->getRightTable()->getTable()));
@@ -312,7 +325,7 @@ class GenerateFromDbml extends Command
 
                     $relatedTable = Str::studly(Str::singular($candidate->getName()));
                     $method = Str::camel(Str::studly(Str::plural($relatedTable)));
-                    $key = $method . ':' . $candidate->getName();
+                    $key = $method.':'.$candidate->getName();
 
                     if (isset($relations[$key])) {
                         continue;
@@ -352,25 +365,25 @@ class GenerateFromDbml extends Command
     {
         return match ($relation['type']) {
             'hasMany' => "return \$this->hasMany({$relation['relatedTable']}::class, '{$relation['foreignKey']}', '{$relation['localKey']}');",
-            default => "return \$this->belongsTo({$relation['relatedTable']}::class, '{$relation['foreignKey']}'" . ($relation['ownerKey'] ? ", '{$relation['ownerKey']}'" : '') . ');',
+            default => "return \$this->belongsTo({$relation['relatedTable']}::class, '{$relation['foreignKey']}'".($relation['ownerKey'] ? ", '{$relation['ownerKey']}'" : '').');',
         };
     }
 
     private function generateMigrationColumns(array $columns): string
     {
         return collect($columns)
-            ->map(fn(Column $column) => $this->buildColumnDefinition($column))
+            ->map(fn (Column $column) => $this->buildColumnDefinition($column))
             ->implode("\n");
     }
 
     private function generateIndexDefinitions(Table $table): string
     {
         $definitions = collect($table->getIndexes())
-            ->map(fn(IndexDefinition $index) => $this->buildIndexDefinition($index))
+            ->map(fn (IndexDefinition $index) => $this->buildIndexDefinition($index))
             ->filter()
             ->implode("\n");
 
-        return $definitions === '' ? '' : "\n" . $definitions;
+        return $definitions === '' ? '' : "\n".$definitions;
     }
 
     private function buildColumnDefinition(Column $column): string
@@ -382,14 +395,14 @@ class GenerateFromDbml extends Command
         }
 
         if ($column->getDefaultValue() !== null) {
-            $field .= '->default(' . $this->formatDefaultValue($column->getDefaultValue()) . ')';
+            $field .= '->default('.$this->formatDefaultValue($column->getDefaultValue()).')';
         }
 
-        if ($column->isUnique() && !$column->isPrimaryKey()) {
+        if ($column->isUnique() && ! $column->isPrimaryKey()) {
             $field .= '->unique()';
         }
 
-        if ($column->isPrimaryKey() && !$this->isAutoIncrementingPrimaryKey($column)) {
+        if ($column->isPrimaryKey() && ! $this->isAutoIncrementingPrimaryKey($column)) {
             $field .= '->primary()';
         }
 
@@ -402,7 +415,7 @@ class GenerateFromDbml extends Command
             return null;
         }
 
-        $columns = '[' . implode(', ', array_map(fn(string $column) => "'{$column}'", $index->getColumns())) . ']';
+        $columns = '['.implode(', ', array_map(fn (string $column) => "'{$column}'", $index->getColumns())).']';
         $method = $index->isUnique() ? 'unique' : 'index';
         $name = $index->getName() ? ", '{$index->getName()}'" : '';
 
@@ -425,7 +438,7 @@ class GenerateFromDbml extends Command
 
         if (isset($this->enums[$column->getType()->getName()])) {
             $enumValues = collect($this->enums[$column->getType()->getName()]->getValues())
-                ->map(fn($value) => "'{$value->getValue()}'")
+                ->map(fn ($value) => "'{$value->getValue()}'")
                 ->implode(', ');
 
             return "\$table->enum('$name', [$enumValues])";
@@ -439,7 +452,8 @@ class GenerateFromDbml extends Command
                 : "->constrained('{$referencedTable}')";
 
             $definition = "\$table->foreignId('$name'){$constraint}";
-            return $definition . $this->formatForeignKeyActions($reference);
+
+            return $definition.$this->formatForeignKeyActions($reference);
         }
 
         $stringLength = max(1, (int) ($args[0] ?? 255));
@@ -472,13 +486,13 @@ class GenerateFromDbml extends Command
     private function formatDefaultValue(?ColumnDefaultValue $default): string
     {
         if ($default === null) {
-            return "null";
+            return 'null';
         }
 
         $value = $default->getValue();
 
         if ($default->isExpression() && is_string($value)) {
-            return "DB::raw('" . addslashes($value) . "')";
+            return "DB::raw('".addslashes($value)."')";
         }
 
         if (is_bool($value)) {
@@ -493,7 +507,7 @@ class GenerateFromDbml extends Command
             return 'null';
         }
 
-        return "'" . addslashes((string) $value) . "'";
+        return "'".addslashes((string) $value)."'";
     }
 
     private function formatForeignKeyActions(ColumnReference $reference): string
@@ -540,7 +554,7 @@ class GenerateFromDbml extends Command
             'date' => 'date',
             'time' => 'datetime',
             'int', 'integer', 'bigint', 'smallint', 'tinyint' => 'integer',
-            'decimal', 'numeric' => isset($args[1]) ? 'decimal:' . (int) $args[1] : 'float',
+            'decimal', 'numeric' => isset($args[1]) ? 'decimal:'.(int) $args[1] : 'float',
             'double', 'float' => 'float',
             default => '',
         };
@@ -560,4 +574,3 @@ class GenerateFromDbml extends Command
         return '';
     }
 }
-

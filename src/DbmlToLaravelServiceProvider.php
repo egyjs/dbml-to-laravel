@@ -2,9 +2,9 @@
 
 namespace Egyjs\DbmlToLaravel;
 
+use Egyjs\DbmlToLaravel\Commands\GenerateFromDbml;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Egyjs\DbmlToLaravel\Commands\GenerateFromDbml;
 
 class DbmlToLaravelServiceProvider extends PackageServiceProvider
 {
@@ -27,7 +27,7 @@ class DbmlToLaravelServiceProvider extends PackageServiceProvider
         // Publish stub files
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../stubs/' => base_path('stubs/dbml-to-laravel'),
+                __DIR__.'/../stubs/' => base_path('stubs/dbml-to-laravel'),
             ], 'dbml-to-laravel-stubs');
         }
     }

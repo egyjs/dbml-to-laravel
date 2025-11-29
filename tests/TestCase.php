@@ -2,9 +2,9 @@
 
 namespace Egyjs\DbmlToLaravel\Tests;
 
+use Egyjs\DbmlToLaravel\DbmlToLaravelServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Egyjs\DbmlToLaravel\DbmlToLaravelServiceProvider;
 
 class TestCase extends Orchestra
 {

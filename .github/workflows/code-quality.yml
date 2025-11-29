@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction
       - name: Run PHPStan
-        run: ./vendor/bin/phpstan analyse --error-format=github
+        run: ./vendor/bin/phpstan analyse src tests --error-format=github
 
   pint:
     runs-on: ubuntu-latest

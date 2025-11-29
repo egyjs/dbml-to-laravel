@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 jobs:
   pest-coverage:
     runs-on: ubuntu-latest
@@ -40,9 +43,9 @@ jobs:
           name: coverage-${{ matrix.php }}
           path: build/logs/clover.xml
       - name: Optional Codecov upload
-        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CODECOV_TOKEN }}
           files: build/logs/clover.xml
           fail_ci_if_error: true

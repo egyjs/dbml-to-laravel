@@ -7,14 +7,13 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class ColumnType
 {
     /**
-     * @param string[] $args
+     * @param  string[]  $args
      */
     public function __construct(
-        private string  $name,
+        private string $name,
         private ?string $schemaName = null,
-        private array   $args = []
-    ) {
-    }
+        private array $args = []
+    ) {}
 
     public function getName(): string
     {

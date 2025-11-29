@@ -6,9 +6,7 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 
 readonly class EnumValue
 {
-    public function __construct(private string $value)
-    {
-    }
+    public function __construct(private string $value) {}
 
     public function getValue(): string
     {

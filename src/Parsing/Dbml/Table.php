@@ -7,15 +7,14 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class Table
 {
     /**
-     * @param Column[] $columns
+     * @param  Column[]  $columns
      */
     public function __construct(
         private string $name,
         private string $schema,
-        private array  $columns,
-        private array  $indexes = []
-    ) {
-    }
+        private array $columns,
+        private array $indexes = []
+    ) {}
 
     public function getName(): string
     {

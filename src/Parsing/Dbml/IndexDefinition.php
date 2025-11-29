@@ -7,15 +7,14 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 readonly class IndexDefinition
 {
     /**
-     * @param string[] $columns
+     * @param  string[]  $columns
      */
     public function __construct(
         private ?string $name,
         private array $columns,
         private bool $unique = false,
         private ?string $type = null
-    ) {
-    }
+    ) {}
 
     public function getName(): ?string
     {

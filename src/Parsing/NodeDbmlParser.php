@@ -21,11 +21,11 @@ class NodeDbmlParser
 
     public function parse(string $path): Schema
     {
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             throw new RuntimeException("Unable to read DBML file: {$path}");
         }
 
-        if (!is_file($this->parserScript)) {
+        if (! is_file($this->parserScript)) {
             throw new RuntimeException('DBML parser script is missing. Please reinstall the package.');
         }
 
@@ -48,7 +48,7 @@ class NodeDbmlParser
             throw new RuntimeException('Failed to decode DBML parser output.', previous: $exception);
         }
 
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             throw new RuntimeException('DBML parser returned an unexpected payload.');
         }
 
@@ -57,9 +57,9 @@ class NodeDbmlParser
 
     private function resolveParserScript(): string
     {
-        $binDirectory = dirname(__DIR__, 2) . '/bin';
-        $compiled = $binDirectory . '/parse-dbml.runtime.cjs';
-        $source = $binDirectory . '/parse-dbml.js';
+        $binDirectory = dirname(__DIR__, 2).'/bin';
+        $compiled = $binDirectory.'/parse-dbml.runtime.cjs';
+        $source = $binDirectory.'/parse-dbml.js';
 
         if (is_file($compiled)) {
             return $compiled;

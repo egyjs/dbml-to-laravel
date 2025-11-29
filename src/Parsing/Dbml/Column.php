@@ -7,19 +7,18 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 class Column
 {
     /**
-     * @param ColumnReference[] $references
+     * @param  ColumnReference[]  $references
      */
     public function __construct(
-        private readonly string             $name,
-        private readonly ColumnType         $type,
-        private readonly bool               $primaryKey,
-        private readonly bool               $unique,
-        private readonly bool               $notNull,
-        private readonly bool               $autoIncrement,
+        private readonly string $name,
+        private readonly ColumnType $type,
+        private readonly bool $primaryKey,
+        private readonly bool $unique,
+        private readonly bool $notNull,
+        private readonly bool $autoIncrement,
         private readonly ?ColumnDefaultValue $defaultValue = null,
-        private array                       $references = []
-    ) {
-    }
+        private array $references = []
+    ) {}
 
     public function getName(): string
     {
@@ -66,7 +65,7 @@ class Column
 
     public function isNull(): bool
     {
-        return !$this->notNull;
+        return ! $this->notNull;
     }
 
     public function getDefaultValue(): ?ColumnDefaultValue
