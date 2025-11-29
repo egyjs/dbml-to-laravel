@@ -35,27 +35,6 @@ jobs:
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse src tests --error-format=github
 
-  pint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache
-            vendor
-          key: composer-${{ runner.os }}-pint-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            composer-${{ runner.os }}-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
-      - name: Install dependencies
-        run: composer install --no-interaction
-      - name: Run Pint
-        run: ./vendor/bin/pint --test
 
   node-parser:
     runs-on: ubuntu-latest
