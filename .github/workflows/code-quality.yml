@@ -74,4 +74,6 @@ jobs:
         run: |
           test -f bin/parse-dbml.runtime.cjs || (echo 'Runtime build missing' && exit 1)
       - name: Smoke test parsing fixture
-        run: node bin/parse-dbml.js tests/Fixtures/simple.dbml || echo 'Parser smoke test completed'
+        run: |
+          set -euo pipefail
+          node bin/parse-dbml.js tests/Fixtures/simple.dbml

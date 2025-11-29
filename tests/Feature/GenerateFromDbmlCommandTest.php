@@ -42,7 +42,7 @@ it('generates models and migrations from DBML', function () {
 
         $migrationContents = file_get_contents($usersMigration);
         expect($migrationContents)
-            ->toContain("foreignId('country_code')->constrained('countries')")
+            ->toContain("foreignId('country_code')->constrained('countries', 'code')")
             ->toContain("enum('role'");
     } finally {
         Carbon::setTestNow();
