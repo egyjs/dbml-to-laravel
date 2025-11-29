@@ -4,10 +4,16 @@ namespace Egyjs\DbmlToLaravel\Tests;
 
 use Egyjs\DbmlToLaravel\DbmlToLaravelServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Testing\TestResponse;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {
+    /**
+     * Holds the latest HTTP/test response so Testbench can reset it between tests.
+     */
+    protected static ?TestResponse $latestResponse = null;
+
     protected function setUp(): void
     {
         parent::setUp();

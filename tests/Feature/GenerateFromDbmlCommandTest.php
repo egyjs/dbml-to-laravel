@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use function Pest\Laravel\artisan;
 
 it('generates models and migrations from DBML', function () {
     $filesystem = new Filesystem;
@@ -27,7 +28,7 @@ it('generates models and migrations from DBML', function () {
     try {
         $fixture = __DIR__.'/../Fixtures/simple.dbml';
 
-        $this->artisan('generate:dbml', ['file' => $fixture, '--force' => true])
+        artisan('generate:dbml', ['file' => $fixture, '--force' => true])
             ->assertExitCode(Command::SUCCESS);
 
         expect(file_exists($appPath.'/Models/User.php'))->toBeTrue();
@@ -55,7 +56,7 @@ it('generates models and migrations from DBML', function () {
 it('fails when DBML file is missing', function () {
     $missing = base_path('tests/Fixtures/missing-file.dbml');
 
-    $this->artisan('generate:dbml', ['file' => $missing])
+    artisan('generate:dbml', ['file' => $missing])
         ->expectsOutput("File not found: $missing")
         ->assertExitCode(Command::FAILURE);
 });
