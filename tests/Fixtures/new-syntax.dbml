@@ -1,0 +1,31 @@
+// Test fixture for newer DBML v2 syntax features
+// This includes TablePartial and TableGroup which are supported in dbmlv2
+
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  created_at datetime [not null, default: `now()`]
+  updated_at datetime [not null, default: `now()`]
+}
+
+Table posts {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  title varchar
+  content text
+  created_at datetime [not null, default: `now()`]
+  updated_at datetime [not null, default: `now()`]
+}
+
+// TablePartial allows reusable column definitions
+TablePartial with_timestamps {
+  created_at datetime [not null, default: `now()`]
+  updated_at datetime [not null, default: `now()`]
+}
+
+// TableGroup allows grouping tables together with optional styling
+TableGroup Laravel {
+  users
+  posts
+}

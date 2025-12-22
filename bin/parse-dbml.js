@@ -118,7 +118,7 @@ function serializeDatabase(database) {
 try {
   const parser = new Parser();
   const dbml = readFile(resolvedPath);
-  const database = parser.parse(dbml, 'dbml');
+  const database = parser.parse(dbml, 'dbmlv2');
   const payload = serializeDatabase(database);
   process.stdout.write(JSON.stringify(payload));
 } catch (error) {
