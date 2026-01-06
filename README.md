@@ -1,5 +1,6 @@
 # **DBML to Laravel Eloquent Generator ✨**
 
+
 **Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) diagrams, accelerating Laravel development and streamlining your schema-to-code workflow.**
 
 > 📰 **Featured on [Laravel News](https://laravel-news.com/dbml-to-laravel)** — the official community blog for Laravel developers!
