@@ -22,7 +22,7 @@ Tired of manually writing Laravel Eloquent models and migration files from your 
 * **Relationship Parsing:** Intelligently parses DBML relationships to create correct Eloquent relationship methods (e.g., `hasMany`, `belongsTo`, `belongsToMany`).  
 * **Casts Support:** Automatically adds common Eloquent casts (e.g., JSON to arrays, timestamps to datetime objects) based on DBML column types.
   
-![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d0ab35a5-84ab-4060-b380-b16253cf842b)
+![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d15995b7-b95f-4524-b81d-65007b4549f8)
 
 ## **📦 Installation**
 
