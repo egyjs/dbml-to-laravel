@@ -1,0 +1,18 @@
+Table orders {
+  id bigint [pk, increment]
+  user_id "int unsigned" [not null, ref: > users.id]
+  product_id "bigint unsigned" [not null, ref: > products.id]
+  coupon_code varchar [ref: > coupons.code]
+}
+
+Table users {
+  id "int unsigned" [pk]
+}
+
+Table products {
+  id "bigint unsigned" [pk, increment]
+}
+
+Table coupons {
+  code varchar [pk]
+}
