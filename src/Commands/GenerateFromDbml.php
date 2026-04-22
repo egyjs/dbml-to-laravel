@@ -34,6 +34,14 @@ class GenerateFromDbml extends Command
         'Parent', 'Self', 'Static', 'Mixed',
     ];
 
+    private const UNSIGNED_INTEGER_COLUMN_METHODS = [
+        'bigint unsigned' => 'unsignedBigInteger',
+        'smallint unsigned' => 'unsignedSmallInteger',
+        'tinyint unsigned' => 'unsignedTinyInteger',
+        'int unsigned' => 'unsignedInteger',
+        'integer unsigned' => 'unsignedInteger',
+    ];
+
     /**
      * Counter for migration sequence numbering
      */
@@ -390,7 +398,7 @@ class GenerateFromDbml extends Command
     {
         $reference = $column->getRefs()[0] ?? null;
 
-        if ($reference && $this->shouldUseForeignId($column)) {
+        if ($reference && ! $this->requiresExplicitForeignKeyConstraint($column)) {
             $field = $this->buildForeignIdDefinition($column, $reference);
 
             if ($column->isNull()) {
@@ -475,6 +483,10 @@ class GenerateFromDbml extends Command
         $precision = max(1, (int) ($args[0] ?? 8));
         $scale = max(0, (int) ($args[1] ?? 2));
 
+        if (isset(self::UNSIGNED_INTEGER_COLUMN_METHODS[$type])) {
+            return "\$table->".self::UNSIGNED_INTEGER_COLUMN_METHODS[$type]."('$name')";
+        }
+
         return match ($type) {
             'varchar', 'string' => "\$table->string('$name', {$stringLength})",
             'char' => "\$table->char('$name', {$charLength})",
@@ -489,10 +501,6 @@ class GenerateFromDbml extends Command
             'double' => "\$table->double('$name')",
             'float' => "\$table->float('$name')",
             'numeric', 'decimal' => "\$table->decimal('$name', {$precision}, {$scale})",
-            'bigint unsigned' => "\$table->unsignedBigInteger('$name')",
-            'smallint unsigned' => "\$table->unsignedSmallInteger('$name')",
-            'tinyint unsigned' => "\$table->unsignedTinyInteger('$name')",
-            'int unsigned', 'integer unsigned' => "\$table->unsignedInteger('$name')",
             'bigint', 'bigserial' => "\$table->bigInteger('$name')",
             'smallint', 'smallserial' => "\$table->smallInteger('$name')",
             'tinyint' => "\$table->tinyInteger('$name')",
@@ -555,13 +563,11 @@ class GenerateFromDbml extends Command
         };
     }
 
-    private function shouldUseForeignId(Column $column): bool
+    private function requiresExplicitForeignKeyConstraint(Column $column): bool
     {
-        return ! in_array(
-            strtolower($column->getType()->getName()),
-            ['int unsigned', 'integer unsigned', 'smallint unsigned', 'tinyint unsigned'],
-            true
-        );
+        $type = strtolower($column->getType()->getName());
+
+        return isset(self::UNSIGNED_INTEGER_COLUMN_METHODS[$type]) && $type !== 'bigint unsigned';
     }
 
     private function buildForeignIdDefinition(Column $column, ColumnReference $reference): string
