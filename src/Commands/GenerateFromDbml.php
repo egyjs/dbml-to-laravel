@@ -42,6 +42,8 @@ class GenerateFromDbml extends Command
         'integer unsigned' => 'unsignedInteger',
     ];
 
+    private const BIGINT_UNSIGNED_TYPE = 'bigint unsigned';
+
     /**
      * Counter for migration sequence numbering
      */
@@ -567,7 +569,7 @@ class GenerateFromDbml extends Command
     {
         $type = strtolower($column->getType()->getName());
 
-        return isset(self::UNSIGNED_INTEGER_COLUMN_METHODS[$type]) && $type !== 'bigint unsigned';
+        return isset(self::UNSIGNED_INTEGER_COLUMN_METHODS[$type]) && $type !== self::BIGINT_UNSIGNED_TYPE;
     }
 
     private function buildForeignIdDefinition(Column $column, ColumnReference $reference): string
