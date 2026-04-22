@@ -1,0 +1,21 @@
+Table "users" {
+  "id" "int unsigned" [pk, not null, increment]
+}
+
+Table "sites" {
+  "id" "smallint unsigned" [pk, not null, increment]
+}
+
+Table "accounts" {
+  "id" "bigint unsigned" [pk, not null, increment]
+}
+
+Table "users_sites_accounts" {
+  "user_id" "int unsigned" [not null]
+  "site_id" "smallint unsigned" [not null]
+  "account_id" "bigint unsigned" [not null]
+}
+
+Ref: "users"."id" < "users_sites_accounts"."user_id" [update: cascade, delete: cascade]
+Ref: "sites"."id" < "users_sites_accounts"."site_id" [update: cascade, delete: cascade]
+Ref: "accounts"."id" < "users_sites_accounts"."account_id" [update: cascade, delete: cascade]

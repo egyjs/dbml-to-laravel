@@ -388,6 +388,26 @@ class GenerateFromDbml extends Command
 
     private function buildColumnDefinition(Column $column): string
     {
+        $reference = $column->getRefs()[0] ?? null;
+
+        if ($reference && $this->shouldUseForeignId($column)) {
+            $field = $this->buildForeignIdDefinition($column, $reference);
+
+            if ($column->isNull()) {
+                $field .= '->nullable()';
+            }
+
+            if ($column->getDefaultValue() !== null) {
+                $field .= '->default('.$this->formatDefaultValue($column->getDefaultValue()).')';
+            }
+
+            if ($column->isUnique() && ! $column->isPrimaryKey()) {
+                $field .= '->unique()';
+            }
+
+            return "            {$field};";
+        }
+
         $field = $this->resolveColumnBaseDefinition($column);
 
         if ($column->isNull()) {
@@ -406,7 +426,13 @@ class GenerateFromDbml extends Command
             $field .= '->primary()';
         }
 
-        return "            {$field};";
+        $definition = "            {$field};";
+
+        if ($reference) {
+            $definition .= "\n            ".$this->buildForeignKeyDefinition($column, $reference).';';
+        }
+
+        return $definition;
     }
 
     private function buildIndexDefinition(IndexDefinition $index): ?string
@@ -444,18 +470,6 @@ class GenerateFromDbml extends Command
             return "\$table->enum('$name', [$enumValues])";
         }
 
-        if ($reference = $column->getRefs()[0] ?? null) {
-            $referencedTable = $reference->getRightTable()->getTable();
-            $referencedColumn = $reference->getReferencedColumn();
-            $constraint = $referencedColumn && $referencedColumn !== 'id'
-                ? "->constrained('{$referencedTable}', '{$referencedColumn}')"
-                : "->constrained('{$referencedTable}')";
-
-            $definition = "\$table->foreignId('$name'){$constraint}";
-
-            return $definition.$this->formatForeignKeyActions($reference);
-        }
-
         $stringLength = max(1, (int) ($args[0] ?? 255));
         $charLength = max(1, (int) ($args[0] ?? 255));
         $precision = max(1, (int) ($args[0] ?? 8));
@@ -475,6 +489,10 @@ class GenerateFromDbml extends Command
             'double' => "\$table->double('$name')",
             'float' => "\$table->float('$name')",
             'numeric', 'decimal' => "\$table->decimal('$name', {$precision}, {$scale})",
+            'bigint unsigned' => "\$table->unsignedBigInteger('$name')",
+            'smallint unsigned' => "\$table->unsignedSmallInteger('$name')",
+            'tinyint unsigned' => "\$table->unsignedTinyInteger('$name')",
+            'int unsigned', 'integer unsigned' => "\$table->unsignedInteger('$name')",
             'bigint', 'bigserial' => "\$table->bigInteger('$name')",
             'smallint', 'smallserial' => "\$table->smallInteger('$name')",
             'tinyint' => "\$table->tinyInteger('$name')",
@@ -535,6 +553,39 @@ class GenerateFromDbml extends Command
             'set null' => "->nullOn{$operationMethod}()",
             default => '',
         };
+    }
+
+    private function shouldUseForeignId(Column $column): bool
+    {
+        return ! in_array(
+            strtolower($column->getType()->getName()),
+            ['int unsigned', 'integer unsigned', 'smallint unsigned', 'tinyint unsigned'],
+            true
+        );
+    }
+
+    private function buildForeignIdDefinition(Column $column, ColumnReference $reference): string
+    {
+        $name = $column->getName();
+        $referencedTable = $reference->getRightTable()->getTable();
+        $referencedColumn = $reference->getReferencedColumn();
+        $constraint = $referencedColumn && $referencedColumn !== 'id'
+            ? "->constrained('{$referencedTable}', '{$referencedColumn}')"
+            : "->constrained('{$referencedTable}')";
+
+        $definition = "\$table->foreignId('$name'){$constraint}";
+
+        return $definition.$this->formatForeignKeyActions($reference);
+    }
+
+    private function buildForeignKeyDefinition(Column $column, ColumnReference $reference): string
+    {
+        $name = $column->getName();
+        $referencedTable = $reference->getRightTable()->getTable();
+        $referencedColumn = $reference->getReferencedColumn() ?: 'id';
+        $definition = "\$table->foreign('$name')->references('{$referencedColumn}')->on('{$referencedTable}')";
+
+        return $definition.$this->formatForeignKeyActions($reference);
     }
 
     private function isAutoIncrementingPrimaryKey(Column $column): bool

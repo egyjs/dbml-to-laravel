@@ -60,3 +60,49 @@ it('fails when DBML file is missing', function () {
         ->expectsOutput("File not found: $missing")
         ->assertExitCode(Command::FAILURE);
 });
+
+it('uses matching unsigned integer FK column types', function () {
+    $filesystem = new Filesystem;
+    $baseTempPath = base_path('tests/.tmp/'.uniqid('dbml_', true));
+    $databasePath = $baseTempPath.'/database';
+
+    $filesystem->makeDirectory($baseTempPath.'/app/Models', 0755, true, true);
+    $filesystem->makeDirectory($databasePath.'/migrations', 0755, true, true);
+
+    $application = app();
+    $originalAppPath = $application->path();
+    $originalDatabasePath = $application->databasePath();
+
+    $application->useAppPath($baseTempPath.'/app');
+    $application->useDatabasePath($databasePath);
+
+    Carbon::setTestNow(Carbon::create(2024, 1, 2, 10));
+
+    try {
+        $fixture = __DIR__.'/../Fixtures/unsigned-foreign-keys.dbml';
+
+        artisan('generate:dbml', ['file' => $fixture, '--force' => true])
+            ->assertExitCode(Command::SUCCESS);
+
+        $migrationFiles = glob($databasePath.'/migrations/*.php');
+        expect($migrationFiles)->toHaveCount(4);
+
+        $pivotMigration = collect($migrationFiles)
+            ->first(fn (string $file) => str_contains($file, 'create_users_sites_accounts_table'));
+
+        expect($pivotMigration)->not->toBeNull();
+
+        $migrationContents = file_get_contents($pivotMigration);
+        expect($migrationContents)
+            ->toContain("unsignedInteger('user_id')")
+            ->toContain("foreign('user_id')->references('id')->on('users')->cascadeOnDelete()->cascadeOnUpdate()")
+            ->toContain("unsignedSmallInteger('site_id')")
+            ->toContain("foreign('site_id')->references('id')->on('sites')->cascadeOnDelete()->cascadeOnUpdate()")
+            ->toContain("foreignId('account_id')->constrained('accounts')->cascadeOnDelete()->cascadeOnUpdate()");
+    } finally {
+        Carbon::setTestNow();
+        $application->useAppPath($originalAppPath);
+        $application->useDatabasePath($originalDatabasePath);
+        $filesystem->deleteDirectory($baseTempPath);
+    }
+});
