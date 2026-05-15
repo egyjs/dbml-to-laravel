@@ -388,7 +388,15 @@ class GenerateFromDbml extends Command
 
     private function buildColumnDefinition(Column $column): string
     {
-        $field = $this->resolveColumnBaseDefinition($column);
+        $name = $column->getName();
+        $type = strtolower($column->getType()->getName());
+        $reference = $column->getRefs()[0] ?? null;
+
+        $useForeignId = $reference !== null && ($type === 'bigint unsigned' || $type === '');
+
+        $field = $useForeignId
+            ? "\$table->foreignId('{$name}')"
+            : $this->resolveColumnBaseDefinition($column);
 
         if ($column->isNull()) {
             $field .= '->nullable()';
@@ -404,6 +412,29 @@ class GenerateFromDbml extends Command
 
         if ($column->isPrimaryKey() && ! $this->isAutoIncrementingPrimaryKey($column)) {
             $field .= '->primary()';
+        }
+
+        if ($reference !== null) {
+            $referencedTable = $reference->getRightTable()->getTable();
+            $referencedColumn = $reference->getReferencedColumn() ?? 'id';
+            $actions = $this->formatForeignKeyActions($reference);
+
+            if ($useForeignId) {
+                $constraint = $referencedColumn !== 'id'
+                    ? "->constrained('{$referencedTable}', '{$referencedColumn}')"
+                    : "->constrained('{$referencedTable}')";
+
+                $field .= $constraint.$actions;
+
+                return "            {$field};";
+            }
+
+            $foreignStmt = "\$table->foreign('{$name}')"
+                ."->references('{$referencedColumn}')"
+                ."->on('{$referencedTable}')"
+                .$actions;
+
+            return "            {$field};\n            {$foreignStmt};";
         }
 
         return "            {$field};";
@@ -444,18 +475,6 @@ class GenerateFromDbml extends Command
             return "\$table->enum('$name', [$enumValues])";
         }
 
-        if ($reference = $column->getRefs()[0] ?? null) {
-            $referencedTable = $reference->getRightTable()->getTable();
-            $referencedColumn = $reference->getReferencedColumn();
-            $constraint = $referencedColumn && $referencedColumn !== 'id'
-                ? "->constrained('{$referencedTable}', '{$referencedColumn}')"
-                : "->constrained('{$referencedTable}')";
-
-            $definition = "\$table->foreignId('$name'){$constraint}";
-
-            return $definition.$this->formatForeignKeyActions($reference);
-        }
-
         $stringLength = max(1, (int) ($args[0] ?? 255));
         $charLength = max(1, (int) ($args[0] ?? 255));
         $precision = max(1, (int) ($args[0] ?? 8));
@@ -475,9 +494,15 @@ class GenerateFromDbml extends Command
             'double' => "\$table->double('$name')",
             'float' => "\$table->float('$name')",
             'numeric', 'decimal' => "\$table->decimal('$name', {$precision}, {$scale})",
+            'bigint unsigned' => "\$table->unsignedBigInteger('$name')",
+            'int unsigned', 'integer unsigned' => "\$table->unsignedInteger('$name')",
+            'smallint unsigned' => "\$table->unsignedSmallInteger('$name')",
+            'tinyint unsigned' => "\$table->unsignedTinyInteger('$name')",
+            'mediumint unsigned' => "\$table->unsignedMediumInteger('$name')",
             'bigint', 'bigserial' => "\$table->bigInteger('$name')",
             'smallint', 'smallserial' => "\$table->smallInteger('$name')",
             'tinyint' => "\$table->tinyInteger('$name')",
+            'mediumint' => "\$table->mediumInteger('$name')",
             'serial', 'int', 'integer' => "\$table->integer('$name')",
             default => "\$table->string('$name')",
         };
