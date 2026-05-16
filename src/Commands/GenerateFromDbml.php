@@ -2,6 +2,7 @@
 
 namespace Egyjs\DbmlToLaravel\Commands;
 
+use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Column;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnDefaultValue;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
@@ -39,6 +40,8 @@ class GenerateFromDbml extends Command
      */
     private int $migrationCounter = 0;
 
+    private ModelContentBuilder $modelBuilder;
+
     public function handle(): int
     {
         $file = $this->argument('file');
@@ -63,6 +66,7 @@ class GenerateFromDbml extends Command
         // Retrieve enums from the schema for use in migrations
         $this->enums = $schema->getEnums();
         $this->migrationCounter = 0; // Reset counter for each run
+        $this->modelBuilder = new ModelContentBuilder;
         $generatedModels = 0;
         $generatedMigrations = 0;
 
@@ -148,45 +152,12 @@ class GenerateFromDbml extends Command
 
     private function generateModelContent(Table $table, string $modelName): ?string
     {
-        $columns = $table->getColumns();
-        // Generate the fillable attributes for the model
-        $fillable = $this->generateFillable($columns);
-        // Generate the casts for the model
-        $casts = $this->generateCasts($columns);
-        // Generate the relations for the model
-        $relations = $this->parseRelations(array_merge(
-            $this->generateBelongsToRelations($columns),
-            $this->generateHasManyRelations($table)
-        ));
-        // Generate the table property if the table name doesn't follow Laravel conventions
-        $tableProperty = $this->generateTableProperty($table->getName(), $modelName);
-
         $stub = $this->getValidatedStubContent('model.stub', 'Model');
         if ($stub === null) {
             return null;
         }
 
-        $tab = str_repeat("\t", 2);
-        $castsString = '';
-
-        if (! empty($casts)) {
-            $castsString = implode(",\n$tab", array_map(
-                fn ($key, $value) => "'$key' => '$value'",
-                array_keys($casts),
-                $casts
-            ));
-        }
-
-        $fillableString = '';
-        if (! empty($fillable)) {
-            $fillableString = implode(",\n$tab", $fillable);
-        }
-
-        return str_replace(
-            ['{{ modelName }}', '{{ tableProperty }}', '{{ fillable }}', '{{ casts }}', '{{ relations }}'],
-            [$modelName, $tableProperty, $fillableString, $castsString, $relations],
-            $stub
-        );
+        return $this->modelBuilder->generateModelContent($table, $modelName, $this->schema, $stub);
     }
 
     private function generateMigrationContent(Table $table): ?string
@@ -268,105 +239,6 @@ class GenerateFromDbml extends Command
         if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
-    }
-
-    private function generateFillable(array $columns): array
-    {
-        // Generate the fillable attributes by filtering out primary keys and certain columns
-        return collect($columns)
-            ->filter(fn (Column $col) => ! $col->isPrimaryKey() &&
-                ! in_array($col->getName(), ['created_at', 'updated_at', 'id'], true)
-            )
-            ->map(fn (Column $col) => "'".$col->getName()."'")
-            ->values()
-            ->toArray();
-    }
-
-    private function generateCasts(array $columns): array
-    {
-        return collect($columns)
-            ->mapWithKeys(fn (Column $col) => [
-                $col->getName() => $this->mapCastType($col),
-            ])
-            ->filter(fn ($value) => ! empty($value) && ! in_array($value, ['string', 'integer'], true))
-            ->toArray();
-    }
-
-    private function generateBelongsToRelations(array $columns): array
-    {
-        return collect($columns)
-            ->filter(fn (Column $col) => count($col->getRefs()) > 0)
-            ->map(function (Column $col) {
-                $reference = $col->getRefs()[0];
-                $relatedTable = Str::studly(Str::singular($reference->getRightTable()->getTable()));
-
-                return [
-                    'type' => 'belongsTo',
-                    'method' => Str::camel($relatedTable),
-                    'relatedTable' => $relatedTable,
-                    'foreignKey' => $col->getName(),
-                    'ownerKey' => $reference->getReferencedColumn(),
-                ];
-            })
-            ->values()
-            ->toArray();
-    }
-
-    private function generateHasManyRelations(Table $table): array
-    {
-        $relations = [];
-
-        foreach ($this->schema->getTables() as $candidate) {
-            foreach ($candidate->getColumns() as $column) {
-                foreach ($column->getRefs() as $reference) {
-                    if (strcasecmp($reference->getRightTable()->getTable(), $table->getName()) !== 0) {
-                        continue;
-                    }
-
-                    $relatedTable = Str::studly(Str::singular($candidate->getName()));
-                    $method = Str::camel(Str::studly(Str::plural($relatedTable)));
-                    $key = $method.':'.$candidate->getName();
-
-                    if (isset($relations[$key])) {
-                        continue;
-                    }
-
-                    $relations[$key] = [
-                        'type' => 'hasMany',
-                        'method' => $method,
-                        'relatedTable' => $relatedTable,
-                        'foreignKey' => $column->getName(),
-                        'localKey' => $reference->getReferencedColumn() ?? 'id',
-                    ];
-                }
-            }
-        }
-
-        return array_values($relations);
-    }
-
-    private function parseRelations(array $relations): string
-    {
-        if (empty($relations)) {
-            return '';
-        }
-
-        return collect($relations)
-            ->map(function (array $relation) {
-                $methodSignature = "    public function {$relation['method']}()";
-                $body = $this->formatRelationBody($relation);
-
-                return "$methodSignature\n    {\n        $body\n    }\n";
-            })
-            ->implode("\n");
-    }
-
-    private function formatRelationBody(array $relation): string
-    {
-        return match ($relation['type']) {
-            'hasMany' => "return \$this->hasMany({$relation['relatedTable']}::class, '{$relation['foreignKey']}', '{$relation['localKey']}');",
-            default => "return \$this->belongsTo({$relation['relatedTable']}::class, '{$relation['foreignKey']}'".($relation['ownerKey'] ? ", '{$relation['ownerKey']}'" : '').');',
-        };
     }
 
     private function generateMigrationColumns(array $columns): string
@@ -567,35 +439,4 @@ class GenerateFromDbml extends Command
         return $column->isPrimaryKey() && $column->isAutoIncrement();
     }
 
-    private function mapCastType(Column $column): string
-    {
-        $type = strtolower($column->getType()->getName());
-        $args = $column->getType()->getArgs();
-
-        return match ($type) {
-            'bool', 'boolean' => 'boolean',
-            'json', 'jsonb' => 'array',
-            'timestamp', 'datetime', 'timestamptz', 'timestampz', 'timestamp with time zone' => 'datetime',
-            'date' => 'date',
-            'time' => 'datetime',
-            'int', 'integer', 'bigint', 'smallint', 'tinyint' => 'integer',
-            'decimal', 'numeric' => isset($args[1]) ? 'decimal:'.(int) $args[1] : 'float',
-            'double', 'float' => 'float',
-            default => '',
-        };
-    }
-
-    /**
-     * Generate table property if table name doesn't follow Laravel conventions
-     */
-    private function generateTableProperty(string $tableName, string $modelName): string
-    {
-        $expectedTableName = Str::snake(Str::plural($modelName));
-
-        if ($tableName !== $expectedTableName) {
-            return "protected \$table = '$tableName';";
-        }
-
-        return '';
-    }
 }
