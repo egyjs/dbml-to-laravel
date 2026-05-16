@@ -9,14 +9,23 @@ class {{ modelName }} extends Model
 {
     use HasFactory;
 
+    // @dbml-sync:table-property
     {{ tableProperty }}
+    // @enddbml-sync:table-property
+
+    // @dbml-sync:fillable
     protected $fillable = [
         {{ fillable }}
     ];
+    // @enddbml-sync:fillable
 
+    // @dbml-sync:casts
     protected $casts = [
         {{ casts }}
     ];
+    // @enddbml-sync:casts
 
+    // @dbml-sync:relations
 {{ relations }}
+    // @enddbml-sync:relations
 }
