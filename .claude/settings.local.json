@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(google-ai-mode)",
+      "Skill(superpowers:dispatching-parallel-agents)"
+    ]
+  }
+}

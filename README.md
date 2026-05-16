@@ -177,6 +177,20 @@ Commit both the updated source file and the generated `bin/parse-dbml.runtime.cj
 
 We welcome contributions! Please see our [CONTRIBUTING.md](/CONTRIBUTING.md) for details on how you can help improve this project. Whether it's bug fixes, new features, or documentation improvements, your input is valuable.
 
+### Contributor Documentation
+
+Detailed contributor guides live in the [`docs/`](docs/) directory:
+
+| Document | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Clone to first green test |
+| [Architecture](docs/architecture.md) | 3-stage pipeline, component map, data flow |
+| [Adding Features](docs/adding-features.md) | Recipe-style "how do I add X" guides |
+| [Stubs](docs/stubs.md) | Stub placeholders, override paths, customization |
+| [Parser Bundle](docs/parser-bundle.md) | Node parser, esbuild bundle, JSON payload |
+| [Testing](docs/testing.md) | Pest patterns, fixtures, adding test cases |
+| [Gotchas](docs/gotchas.md) | Compatibility matrix, silent edge cases, traps |
+
 ## **❓ Support**
 
 For questions, bug reports, or feature requests, please open an issue on the [GitHub Issues page](https://github.com/egyjs/dbml-to-laravel/issues). We'll do our best to respond promptly.
