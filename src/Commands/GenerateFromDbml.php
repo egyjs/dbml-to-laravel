@@ -16,7 +16,9 @@ use Throwable;
 
 class GenerateFromDbml extends Command
 {
-    protected $signature = 'generate:dbml {file} {--force : Overwrite existing files}';
+    protected $signature = 'dbml:generate {file} {--force : Overwrite existing files}';
+
+    protected $aliases = ['generate:dbml'];
 
     protected $description = 'Generate models and migrations from a DBML file';
 
@@ -31,7 +33,7 @@ class GenerateFromDbml extends Command
 
     private ModelContentBuilder $modelBuilder;
 
-    private const FORBIDDEN_MODEL_NAMES = [
+    public const FORBIDDEN_MODEL_NAMES = [
         'Class', 'Trait', 'Interface', 'Namespace', 'Object', 'Resource', 'String',
         'Array', 'Float', 'Int', 'Bool', 'Boolean', 'Null', 'Void', 'Iterable',
         'Parent', 'Self', 'Static', 'Mixed',

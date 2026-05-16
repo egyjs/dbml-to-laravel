@@ -1,5 +1,4 @@
 # Composer Related
-composer.lock
 /vendor
 
 # Frontend Assets

@@ -1,0 +1,28 @@
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  bio varchar [null]
+}
+
+Table posts {
+  id int [pk, increment]
+  title varchar
+  body text
+  user_id int
+  published boolean [default: false]
+}
+
+Table comments {
+  id int [pk, increment]
+  content text
+  post_id int
+}
+
+Enum user_role {
+  admin
+  editor
+}
+
+Ref: posts.user_id > users.id
+Ref: comments.post_id > posts.id

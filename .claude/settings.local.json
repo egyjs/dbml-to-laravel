@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Skill(google-ai-mode)",
-      "Skill(superpowers:dispatching-parallel-agents)"
+      "Skill(superpowers:dispatching-parallel-agents)",
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)"
     ]
   }
 }

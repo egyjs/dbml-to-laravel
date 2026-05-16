@@ -3,6 +3,7 @@
 namespace Egyjs\DbmlToLaravel;
 
 use Egyjs\DbmlToLaravel\Commands\GenerateFromDbml;
+use Egyjs\DbmlToLaravel\Commands\SyncDbml;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -17,7 +18,8 @@ class DbmlToLaravelServiceProvider extends PackageServiceProvider
          */
         $package
             ->name('dbml-to-laravel')
-            ->hasCommand(GenerateFromDbml::class);
+            ->hasCommand(GenerateFromDbml::class)
+            ->hasCommand(SyncDbml::class);
     }
 
     public function boot()

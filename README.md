@@ -21,6 +21,7 @@ Tired of manually writing Laravel Eloquent models and migration files from your 
 * **Customizable Stubs:** Easily modify the default model and migration stubs to align with your project's coding style and specific requirements.  
 * **Relationship Parsing:** Intelligently parses DBML relationships to create correct Eloquent relationship methods (e.g., `hasMany`, `belongsTo`, `belongsToMany`).  
 * **Casts Support:** Automatically adds common Eloquent casts (e.g., JSON to arrays, timestamps to datetime objects) based on DBML column types.
+* **Incremental Sync:** Run `dbml:sync` to generate alter migrations and patch models based on schema changes — no need to regenerate everything from scratch.
   
 ![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d15995b7-b95f-4524-b81d-65007b4549f8)
 
@@ -46,7 +47,7 @@ php artisan vendor:publish --tag=dbml-to-laravel-stubs
 
 ## **💡 Usage**
 
-Once installed, you can generate your Laravel models and migrations from a DBML file using the `generate:dbml` Artisan command.
+Once installed, you can generate your Laravel models and migrations from a DBML file using the `dbml:generate` Artisan command. (`generate:dbml` also works as a legacy alias.)
 
 1. **Create your DBML schema file** (e.g., database/schema.dbml).  
    **Example database/schema.dbml:**
@@ -73,7 +74,7 @@ Once installed, you can generate your Laravel models and migrations from a DBML 
 ```
 3. **Run the Artisan command:**  
 ```bash
-php artisan generate:dbml database/schema.dbml
+php artisan dbml:generate database/schema.dbml
 ```
 
    Replace `database/schema.dbml` with the actual path to your DBML file.
@@ -157,6 +158,61 @@ return new class extends Migration
     }
 }
 ```
+
+### **Incremental Sync**
+
+After your initial `generate:dbml`, you can iterate on your DBML schema and generate only the changes:
+
+```bash
+php artisan dbml:sync database/schema.dbml
+```
+
+This command:
+
+1. Reads the snapshot (`.dbml-sync.json`) created by `generate:dbml`
+2. Compares it against the current DBML file
+3. Generates **alter migrations** for added/modified/dropped columns, indexes, and foreign keys
+4. Generates **create migrations** for new tables and **drop migrations** for removed tables
+5. Patches existing Eloquent models within `@dbml-sync` markers (fillable, casts, relations, table property)
+
+Use `--force` to skip confirmation prompts:
+
+```bash
+php artisan dbml:sync database/schema.dbml --force
+```
+
+**Workflow example:**
+
+```bash
+# Initial generation — creates models, migrations, and snapshot
+php artisan dbml:generate database/schema.dbml
+
+# ... edit schema.dbml (add columns, new tables, etc.)
+
+# Incremental sync — only the changes
+php artisan dbml:sync database/schema.dbml
+```
+
+**Model markers.** Generated models include `@dbml-sync` markers that the patcher targets:
+
+```php
+class User extends Model
+{
+    // @dbml-sync:fillable
+    protected $fillable = ['name', 'email'];
+    // @enddbml-sync:fillable
+
+    // @dbml-sync:casts
+    protected $casts = ['email_verified_at' => 'datetime'];
+    // @enddbml-sync:casts
+
+    // @dbml-sync:relations
+    public function posts() { return $this->hasMany(Post::class); }
+    // @enddbml-sync:relations
+}
+```
+
+Code outside these markers is never touched by `dbml:sync`.
 
 ## **⚙️ Customization**
 

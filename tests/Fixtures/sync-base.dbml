@@ -1,0 +1,19 @@
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  role user_role
+}
+
+Table posts {
+  id int [pk, increment]
+  title varchar
+  user_id int
+}
+
+Enum user_role {
+  admin
+  editor
+}
+
+Ref: posts.user_id > users.id
