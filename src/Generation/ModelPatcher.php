@@ -46,7 +46,7 @@ class ModelPatcher
 
     private function replaceBetweenMarkers(string $content, string $marker, string $endMarker, string $newContent): string
     {
-        $pattern = '/\/\/ ' . preg_quote($marker, '/') . '\n(.*?)\/\/ ' . preg_quote($endMarker, '/') . '/s';
+        $pattern = '/\/\/ ' . preg_quote($marker, '/') . '\r?\n(.*?)\/\/ ' . preg_quote($endMarker, '/') . '/s';
 
         return preg_replace($pattern, "// {$marker}\n{$newContent}// {$endMarker}", $content);
     }
