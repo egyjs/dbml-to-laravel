@@ -14,6 +14,8 @@ class NodeDbmlParser
 {
     private string $parserScript;
 
+    private ?array $lastPayload = null;
+
     public function __construct(?string $parserScript = null)
     {
         $this->parserScript = $parserScript ?? $this->resolveParserScript();
@@ -52,7 +54,14 @@ class NodeDbmlParser
             throw new RuntimeException('DBML parser returned an unexpected payload.');
         }
 
+        $this->lastPayload = $payload;
+
         return SchemaFactory::fromArray($payload);
+    }
+
+    public function getLastPayload(): ?array
+    {
+        return $this->lastPayload;
     }
 
     private function resolveParserScript(): string

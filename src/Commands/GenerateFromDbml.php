@@ -4,6 +4,7 @@ namespace Egyjs\DbmlToLaravel\Commands;
 
 use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\JsonSnapshotStore;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
@@ -80,6 +81,12 @@ class GenerateFromDbml extends Command
         }
 
         $this->info("Generated $generatedModels models and $generatedMigrations migrations successfully.");
+
+        // Write snapshot for future dbml:sync runs
+        $payload = $parser->getLastPayload();
+        if ($payload !== null) {
+            (new JsonSnapshotStore)->write($file, $payload);
+        }
 
         return static::SUCCESS;
     }
