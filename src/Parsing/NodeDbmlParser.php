@@ -14,11 +14,14 @@ class NodeDbmlParser
 {
     private string $parserScript;
 
+    private int $timeout;
+
     private ?array $lastPayload = null;
 
-    public function __construct(?string $parserScript = null)
+    public function __construct(?string $parserScript = null, ?int $timeout = null)
     {
         $this->parserScript = $parserScript ?? $this->resolveParserScript();
+        $this->timeout = $timeout ?? 120;
     }
 
     public function parse(string $path): Schema
@@ -32,7 +35,7 @@ class NodeDbmlParser
         }
 
         $process = new Process(['node', $this->parserScript, $path]);
-        $process->setTimeout(30);
+        $process->setTimeout($this->timeout);
 
         try {
             $process->mustRun();
