@@ -14,6 +14,8 @@
 
 Tired of manually writing Laravel Eloquent models and migration files from your database diagrams? This package automates the process, letting you focus on building features rather than repetitive boilerplate code. Say goodbye to manual schema-to-code conversion and embrace a faster, more efficient Laravel development workflow.
 
+![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d15995b7-b95f-4524-b81d-65007b4549f8)
+
 ## **✨ Features**
 
 * **DBML to Laravel Models:** Automatically generate Eloquent models with fillable properties, hidden attributes, and defined relationships (one-to-one, one-to-many, many-to-many).  
@@ -23,7 +25,6 @@ Tired of manually writing Laravel Eloquent models and migration files from your 
 * **Casts Support:** Automatically adds common Eloquent casts (e.g., JSON to arrays, timestamps to datetime objects) based on DBML column types.
 * **Incremental Sync:** Run `dbml:sync` to generate alter migrations and patch models based on schema changes — no need to regenerate everything from scratch.
   
-![DBML to Laravel Model & Migration Generator](https://github.com/user-attachments/assets/d15995b7-b95f-4524-b81d-65007b4549f8)
 
 ## **📦 Installation**
 
