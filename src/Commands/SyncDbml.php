@@ -4,23 +4,30 @@ declare(strict_types=1);
 
 namespace Egyjs\DbmlToLaravel\Commands;
 
+use Egyjs\DbmlToLaravel\Commands\Concerns\ReportsResults;
 use Egyjs\DbmlToLaravel\Generation\AlterMigrationGenerator;
 use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelPatcher;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\JsonSnapshotStore;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\SchemaDiff;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\SchemaDiffer;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\TableDiff;
 use Egyjs\DbmlToLaravel\Parsing\NodeDbmlParser;
 use Illuminate\Console\Command;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Throwable;
 
 class SyncDbml extends Command
 {
-    protected $signature = 'dbml:sync {file} {--force : Skip confirmation prompts}';
+    use ReportsResults;
+
+    protected $signature = 'dbml:sync {file}
+        {--force : Apply all changes without confirmation prompts (required in non-interactive shells)}
+        {--dry-run : Show the detected changes and files that would be written without writing anything}
+        {--json : Print a machine-readable JSON report instead of console output}';
 
     protected $description = 'Generate incremental migrations and update models by syncing DBML changes';
 
@@ -29,19 +36,16 @@ class SyncDbml extends Command
     public function handle(): int
     {
         $file = $this->argument('file');
+        $this->startReport();
 
         if (! file_exists($file)) {
-            $this->error("File not found: $file");
-
-            return static::FAILURE;
+            return $this->failWith("File not found: $file");
         }
 
         $snapshotStore = new JsonSnapshotStore;
 
         if (! $snapshotStore->exists($file)) {
-            $this->error('No snapshot found. Run generate:dbml first to create a snapshot.');
-
-            return static::FAILURE;
+            return $this->failWith('No snapshot found. Run generate:dbml first to create a snapshot.');
         }
 
         try {
@@ -49,17 +53,13 @@ class SyncDbml extends Command
             $newSchema = $parser->parse($file);
             $payload = $parser->getLastPayload();
         } catch (Throwable $e) {
-            $this->error('Failed to parse DBML file: '.$e->getMessage());
-
-            return static::FAILURE;
+            return $this->failWith('Failed to parse DBML file: '.$e->getMessage());
         }
 
         $oldSchema = $snapshotStore->read($file);
 
         if ($oldSchema === null) {
-            $this->error('Failed to read snapshot. Delete .dbml-sync.json and re-run generate:dbml.');
-
-            return static::FAILURE;
+            return $this->failWith('Failed to read snapshot. Delete .dbml-sync.json and re-run generate:dbml.');
         }
 
         $diff = SchemaDiffer::diff($oldSchema, $newSchema);
@@ -67,16 +67,26 @@ class SyncDbml extends Command
         if ($diff->isEmpty()) {
             $this->info('No schema changes detected.');
 
-            return static::SUCCESS;
+            return $this->finish();
         }
 
         $this->displayDiffSummary($diff);
 
-        if (! empty($diff->droppedTables) && ! $this->option('force')) {
-            if (! $this->confirm('Dropped tables detected. This will generate DROP TABLE migrations. Continue?')) {
-                $this->info('Sync cancelled.');
+        $dryRun = $this->isDryRun();
+        $force = (bool) $this->option('force');
 
-                return static::SUCCESS;
+        // Prompts cannot be answered without a TTY: confirm() would silently
+        // return "no" and the run would look successful while doing nothing.
+        if (! $dryRun && ! $force && ! $this->canPrompt() && $this->needsConfirmation($diff)) {
+            return $this->failWith(
+                'Confirmation required (dropped tables or model changes) but the shell is non-interactive. '
+                .'Re-run with --force to apply, or --dry-run to preview.'
+            );
+        }
+
+        if (! empty($diff->droppedTables) && ! $force && ! $dryRun) {
+            if (! $this->confirm('Dropped tables detected. This will generate DROP TABLE migrations. Continue?')) {
+                return $this->failWith('Sync cancelled: dropped tables were not confirmed. No files were written.');
             }
         }
 
@@ -95,7 +105,7 @@ class SyncDbml extends Command
             $modelName = Str::studly(Str::singular($table->getName()));
 
             if ($this->isForbiddenModelName($modelName)) {
-                $this->error("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
+                $this->reportError("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
 
                 continue;
             }
@@ -120,17 +130,19 @@ class SyncDbml extends Command
                 if ($table !== null) {
                     $patched = $modelPatcher->patch($modelContent, $table, $modelName, $newSchema);
 
-                    if (! $this->option('force')) {
+                    if (! $force && ! $dryRun) {
                         $this->info("Model changes for {$modelName}:");
-                        $this->line("  - Updated fillable, casts, and relations within @dbml-sync markers");
+                        $this->line('  - Updated fillable, casts, and relations within @dbml-sync markers');
 
                         if (! $this->confirm("Apply model changes to {$modelName}?")) {
+                            $this->reportSkipped("model:$modelName", 'declined at prompt');
+
                             continue;
                         }
                     }
 
-                    (new Filesystem)->put($modelPath, $patched);
-                    $this->info("Model {$modelName} patched.");
+                    $this->writeGeneratedFile($modelPath, $patched);
+                    $this->info($dryRun ? "[dry-run] Would patch model {$modelName}." : "Model {$modelName} patched.");
                     $patchedModels++;
                 }
             }
@@ -141,13 +153,33 @@ class SyncDbml extends Command
             $generatedMigrations++;
         }
 
-        if ($payload !== null) {
+        if ($payload !== null && ! $dryRun) {
             $snapshotStore->write($file, $payload);
         }
 
-        $this->info("Synced: $generatedMigrations migrations generated, $patchedModels models patched.");
+        $this->info(($dryRun ? '[dry-run] Would sync' : 'Synced').": $generatedMigrations migrations generated, $patchedModels models patched.");
 
-        return static::SUCCESS;
+        return $this->finish();
+    }
+
+    /**
+     * Whether applying this diff would prompt the user (dropped tables or an existing model to patch).
+     */
+    private function needsConfirmation(SchemaDiff $diff): bool
+    {
+        if (! empty($diff->droppedTables)) {
+            return true;
+        }
+
+        foreach ($diff->modifiedTables as $tableDiff) {
+            $modelName = Str::studly(Str::singular($tableDiff->tableName));
+
+            if (file_exists(app_path("Models/$modelName.php"))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function displayDiffSummary(SchemaDiff $diff): void
@@ -232,13 +264,14 @@ class SyncDbml extends Command
             $stub
         );
 
-        $this->ensureDirectoryExists(dirname($filePath));
-        (new Filesystem)->put($filePath, $content);
-        $this->info("Migration for new table {$table->getName()} created.");
+        $this->writeGeneratedFile($filePath, $content);
+        $this->info($this->isDryRun()
+            ? "[dry-run] Would create migration for new table {$table->getName()}."
+            : "Migration for new table {$table->getName()} created.");
         $this->migrationCounter++;
     }
 
-    private function generateAlterMigration(\Egyjs\DbmlToLaravel\Parsing\Dbml\TableDiff $tableDiff, AlterMigrationGenerator $generator): void
+    private function generateAlterMigration(TableDiff $tableDiff, AlterMigrationGenerator $generator): void
     {
         $baseDate = now()->format('Y_m_d');
         $sequence = str_pad((string) $this->migrationCounter, 6, '0', STR_PAD_LEFT);
@@ -255,9 +288,10 @@ class SyncDbml extends Command
         $stubContent = file_get_contents($stubPath);
         $content = $generator->generate($tableDiff, $stubContent);
 
-        $this->ensureDirectoryExists(dirname($filePath));
-        (new Filesystem)->put($filePath, $content);
-        $this->info("Alter migration for {$tableDiff->tableName} created.");
+        $this->writeGeneratedFile($filePath, $content);
+        $this->info($this->isDryRun()
+            ? "[dry-run] Would create alter migration for {$tableDiff->tableName}."
+            : "Alter migration for {$tableDiff->tableName} created.");
         $this->migrationCounter++;
     }
 
@@ -292,13 +326,14 @@ PHP;
 
         $content = str_replace('{{ tableName }}', $tableName, $content);
 
-        $this->ensureDirectoryExists(dirname($filePath));
-        (new Filesystem)->put($filePath, $content);
-        $this->warn("Drop migration for {$tableName} created.");
+        $this->writeGeneratedFile($filePath, $content);
+        $this->warn($this->isDryRun()
+            ? "[dry-run] Would create drop migration for {$tableName}."
+            : "Drop migration for {$tableName} created.");
         $this->migrationCounter++;
     }
 
-    private function findTable(\Egyjs\DbmlToLaravel\Parsing\Dbml\Schema $schema, string $tableName): ?Table
+    private function findTable(Schema $schema, string $tableName): ?Table
     {
         foreach ($schema->getTables() as $table) {
             if (strtolower($table->getName()) === strtolower($tableName)) {
@@ -312,12 +347,5 @@ PHP;
     private function isForbiddenModelName(string $modelName): bool
     {
         return in_array($modelName, GenerateFromDbml::FORBIDDEN_MODEL_NAMES, true);
-    }
-
-    private function ensureDirectoryExists(string $directory): void
-    {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
     }
 }
