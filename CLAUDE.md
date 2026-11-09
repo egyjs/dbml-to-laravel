@@ -62,4 +62,4 @@ The `post-autoload-dump` composer hook runs `testbench package:discover` — if 
 
 ## Compatibility matrix
 
-Supports PHP 8.0–8.4 and Laravel 8–13 in one branch via wide composer constraints. When adding code: avoid PHP 8.1+ syntax (enums, readonly, never) unless gated, and avoid Laravel APIs added after 8.x without checking — package targets the widest range still in `composer.json`.
+Supports PHP 8.2–8.4 and Laravel 8–13 in one branch via wide composer constraints (code uses `readonly` classes, so PHP 8.2 is the floor). When adding code: avoid PHP 8.3+ syntax (typed class constants, `#[\Override]`) unless gated, and avoid Laravel APIs added after 8.x without checking — package targets the widest range still in `composer.json`.
