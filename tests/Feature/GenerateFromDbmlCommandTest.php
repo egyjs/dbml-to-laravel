@@ -27,7 +27,9 @@ it('generates models and migrations from DBML', function () {
     Carbon::setTestNow(Carbon::create(2024, 1, 2, 10));
 
     try {
-        $fixture = __DIR__.'/../Fixtures/simple.dbml';
+        // Copy the fixture so the .dbml-sync.json snapshot is written in the temp dir, not tests/Fixtures.
+        $fixture = $baseTempPath.'/simple.dbml';
+        $filesystem->copy(__DIR__.'/../Fixtures/simple.dbml', $fixture);
 
         artisan('generate:dbml', ['file' => $fixture, '--force' => true])
             ->assertExitCode(Command::SUCCESS);
@@ -74,7 +76,9 @@ it('respects column type when generating foreign key constraints', function () {
     Carbon::setTestNow(Carbon::create(2024, 1, 2, 10));
 
     try {
-        $fixture = __DIR__.'/../Fixtures/unsigned-fk.dbml';
+        // Copy the fixture so the .dbml-sync.json snapshot is written in the temp dir, not tests/Fixtures.
+        $fixture = $baseTempPath.'/unsigned-fk.dbml';
+        $filesystem->copy(__DIR__.'/../Fixtures/unsigned-fk.dbml', $fixture);
 
         artisan('generate:dbml', ['file' => $fixture, '--force' => true])
             ->assertExitCode(Command::SUCCESS);
