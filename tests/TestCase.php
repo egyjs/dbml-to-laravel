@@ -11,8 +11,13 @@ class TestCase extends Orchestra
 {
     /**
      * Holds the latest HTTP/test response so Testbench can reset it between tests.
+     *
+     * Public and untyped to stay compatible with early Laravel 11 releases,
+     * where MakesHttpRequests declares `public static $latestResponse;`.
+     *
+     * @var TestResponse|null
      */
-    protected static ?TestResponse $latestResponse = null;
+    public static $latestResponse = null;
 
     protected function setUp(): void
     {
