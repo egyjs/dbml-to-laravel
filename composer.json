@@ -1,12 +1,22 @@
 {
     "name": "egyjs/dbml-to-laravel",
-    "description": "Generate Laravel Eloquent models and migration files directly from your DBML (Database Markup Language) files with ease.",
+    "description": "Generate Laravel Eloquent models and migrations from DBML (dbdiagram.io) schema files, and incrementally sync schema changes into new migrations.",
     "keywords": [
-        "egyjs",
         "laravel",
         "dbml",
-        "converter",
-        "dbml-to-laravel"
+        "dbdiagram",
+        "eloquent",
+        "migrations",
+        "models",
+        "schema",
+        "code-generator",
+        "generator",
+        "scaffolding",
+        "database-schema",
+        "laravel-boost",
+        "ai",
+        "dbml-to-laravel",
+        "egyjs"
     ],
     "homepage": "https://github.com/egyjs/dbml-to-laravel",
     "license": "MIT",

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "DBML to Laravel",
+  "description": "Laravel package (egyjs/dbml-to-laravel) that generates Eloquent models and migrations from DBML / dbdiagram.io schema files, and incrementally syncs DBML changes into new create/alter/drop migrations with `php artisan dbml:sync`.",
+  "folders": ["resources/boost"],
+  "excludeFolders": ["docs", "tests", "vendor", "node_modules", "build"],
+  "excludeFiles": ["CHANGELOG.md", "CLAUDE.md"],
+  "rules": [
+    "Install with `composer require egyjs/dbml-to-laravel --dev`; Node.js 18+ must be on PATH (the DBML parser is pre-bundled, no npm install needed).",
+    "Treat the DBML file (usually `database/schema.dbml`) as the single source of truth; do not hand-write migrations for tables it manages.",
+    "First run: `php artisan dbml:generate database/schema.dbml`. After every DBML edit: `php artisan dbml:sync database/schema.dbml --force`.",
+    "Always pass `--force` in non-interactive shells so commands never wait on a confirmation prompt.",
+    "Never remove `// @dbml-sync:*` / `// @enddbml-sync:*` markers in generated models; put custom model code outside them.",
+    "Commit the `.dbml-sync.json` snapshot that is written next to the DBML file; `dbml:sync` needs it.",
+    "Declare each DBML relationship once (inline `[ref: > table.id]` or a top-level `Ref:`), never both.",
+    "Only `>` / `<` refs generate foreign keys and belongsTo/hasMany; one-to-one (`-`) and many-to-many (`<>`) refs are ignored."
+  ]
+}

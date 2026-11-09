@@ -10,8 +10,11 @@ Use this skill whenever creating or modifying database tables, columns, indexes,
 
 ## Workflow
 
-1. **Locate the DBML Schema**: Check for `database/schema.dbml` (or any `.dbml` file in `database/`) and `.dbml-sync.json`.
-2. **Edit the DBML File**: Define tables, column types, attributes (`pk`, `increment`, `unique`, `null`, `not null`, `default`, `note`), and relationships (`Ref:`).
+1. **Locate the DBML Schema**: Check for `database/schema.dbml` (or any `.dbml` file in `database/`). The `.dbml-sync.json` snapshot lives **next to the DBML file** (e.g. `database/.dbml-sync.json`).
+2. **Edit the DBML File**: Define tables, column types, attributes (`pk`, `increment`, `unique`, `not null`, `default`, `note`), and relationships.
+   - Declare each relationship once — inline `[ref: > users.id]` **or** a top-level `Ref:` line, never both (duplicates fail to parse).
+   - Only `>` / `<` refs generate foreign keys and `belongsTo` / `hasMany`. One-to-one (`-`) and many-to-many (`<>`) refs are ignored; write pivot tables and `hasOne` / `belongsToMany` by hand.
+   - Columns without `not null` are generated as `->nullable()`.
 3. **Run the Generator or Incremental Sync**:
    - First-time generation (no `.dbml-sync.json` present):
      ```bash
