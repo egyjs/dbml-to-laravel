@@ -7,8 +7,6 @@ use Egyjs\DbmlToLaravel\Parsing\Dbml\Column;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnType;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ReferenceTable;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
 
 it('generates fillable from columns', function () {
     $builder = new ModelContentBuilder;

@@ -19,7 +19,7 @@ it('generates add column in up and dropColumn in down', function () {
         addedColumns: [new Column('phone', new ColumnType('varchar'), false, false, false, false)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("Schema::table('users'");
@@ -34,7 +34,7 @@ it('generates dropColumn in up and recreate in down', function () {
         droppedColumns: [new Column('phone', new ColumnType('varchar'), false, false, false, false)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("\$table->dropColumn('phone')");
@@ -51,7 +51,7 @@ it('generates change column with ->change()', function () {
         modifiedColumns: [new ColumnPair($old, $new)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain('->change()');
@@ -66,7 +66,7 @@ it('correctly replaces stub placeholders', function () {
         addedColumns: [new Column('status', new ColumnType('varchar'), false, false, true, false)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("Schema::table('orders'");
@@ -82,7 +82,7 @@ it('generates add index in up and drop index in down', function () {
         addedIndexes: [new IndexDefinition('idx_email', ['email'], true)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("\$table->unique(['email'], 'idx_email')");
@@ -96,7 +96,7 @@ it('generates drop index in up and recreate in down', function () {
         droppedIndexes: [new IndexDefinition('idx_email', ['email'], true)]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("\$table->dropIndex('idx_email')");
@@ -109,11 +109,11 @@ it('generates add foreign key in up and drop foreign key in down', function () {
     $diff = new TableDiff(
         tableName: 'comments',
         addedForeignKeys: [
-            ['column' => 'post_id', 'reference' => $ref]
+            ['column' => 'post_id', 'reference' => $ref],
         ]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("\$table->foreign('post_id')");
@@ -128,11 +128,11 @@ it('generates drop foreign key in up and add foreign key in down', function () {
     $diff = new TableDiff(
         tableName: 'comments',
         droppedForeignKeys: [
-            ['column' => 'post_id', 'reference' => $ref]
+            ['column' => 'post_id', 'reference' => $ref],
         ]
     );
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("\$table->dropForeign(['post_id'])");
@@ -144,7 +144,7 @@ it('generates empty alter migration when diff is empty', function () {
     $generator = new AlterMigrationGenerator(new ColumnDefinitionBuilder([]));
     $diff = new TableDiff(tableName: 'users');
 
-    $stub = file_get_contents(__DIR__ . '/../../stubs/alter-migration.stub');
+    $stub = file_get_contents(__DIR__.'/../../stubs/alter-migration.stub');
     $content = $generator->generate($diff, $stub);
 
     expect($content)->toContain("Schema::table('users'");

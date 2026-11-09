@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+
 use function Pest\Laravel\artisan;
 
 it('fails when DBML file is missing', function () {

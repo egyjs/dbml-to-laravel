@@ -4,8 +4,8 @@ namespace Egyjs\DbmlToLaravel\Commands;
 
 use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\JsonSnapshotStore;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\JsonSnapshotStore;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
 use Egyjs\DbmlToLaravel\Parsing\NodeDbmlParser;

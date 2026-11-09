@@ -13,14 +13,14 @@ use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
 class ColumnDefinitionBuilder
 {
     /**
-     * @param array<string, EnumDefinition> $enums
+     * @param  array<string, EnumDefinition>  $enums
      */
     public function __construct(
         private array $enums = []
     ) {}
 
     /**
-     * @param array<string, EnumDefinition> $enums
+     * @param  array<string, EnumDefinition>  $enums
      */
     public function withEnums(array $enums): self
     {
@@ -91,6 +91,7 @@ class ColumnDefinitionBuilder
     public function buildColumnDefinitionWithoutIndent(Column $column): string
     {
         $def = $this->buildColumnDefinition($column);
+
         return preg_replace('/^            /m', '', $def);
     }
 

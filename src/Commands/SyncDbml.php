@@ -9,9 +9,11 @@ use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelPatcher;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\JsonSnapshotStore;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\SchemaDiff;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\SchemaDiffer;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\TableDiff;
 use Egyjs\DbmlToLaravel\Parsing\NodeDbmlParser;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -122,7 +124,7 @@ class SyncDbml extends Command
 
                     if (! $this->option('force')) {
                         $this->info("Model changes for {$modelName}:");
-                        $this->line("  - Updated fillable, casts, and relations within @dbml-sync markers");
+                        $this->line('  - Updated fillable, casts, and relations within @dbml-sync markers');
 
                         if (! $this->confirm("Apply model changes to {$modelName}?")) {
                             continue;
@@ -238,7 +240,7 @@ class SyncDbml extends Command
         $this->migrationCounter++;
     }
 
-    private function generateAlterMigration(\Egyjs\DbmlToLaravel\Parsing\Dbml\TableDiff $tableDiff, AlterMigrationGenerator $generator): void
+    private function generateAlterMigration(TableDiff $tableDiff, AlterMigrationGenerator $generator): void
     {
         $baseDate = now()->format('Y_m_d');
         $sequence = str_pad((string) $this->migrationCounter, 6, '0', STR_PAD_LEFT);
@@ -298,7 +300,7 @@ PHP;
         $this->migrationCounter++;
     }
 
-    private function findTable(\Egyjs\DbmlToLaravel\Parsing\Dbml\Schema $schema, string $tableName): ?Table
+    private function findTable(Schema $schema, string $tableName): ?Table
     {
         foreach ($schema->getTables() as $table) {
             if (strtolower($table->getName()) === strtolower($tableName)) {

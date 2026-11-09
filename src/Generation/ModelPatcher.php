@@ -46,7 +46,7 @@ class ModelPatcher
 
     private function replaceBetweenMarkers(string $content, string $marker, string $endMarker, string $newContent): string
     {
-        $pattern = '/\/\/ ' . preg_quote($marker, '/') . '\r?\n(.*?)\/\/ ' . preg_quote($endMarker, '/') . '/s';
+        $pattern = '/\/\/ '.preg_quote($marker, '/').'\r?\n(.*?)\/\/ '.preg_quote($endMarker, '/').'/s';
 
         return preg_replace($pattern, "// {$marker}\n{$newContent}// {$endMarker}", $content);
     }
@@ -58,7 +58,7 @@ class ModelPatcher
         $block = "\n    {$marker}\n{$blockContent}    {$endMarker}\n";
 
         // Insert before the closing } of the class
-        return preg_replace('/(\n)(\s*\}\s*$)/m', $block . '$1$2', $content);
+        return preg_replace('/(\n)(\s*\}\s*$)/m', $block.'$1$2', $content);
     }
 
     /**
@@ -80,8 +80,8 @@ class ModelPatcher
         $fillableString = '';
         if (! empty($fillable)) {
             $fillableString = "    protected \$fillable = [\n{$tab}"
-                . implode(",\n{$tab}", $fillable)
-                . ",\n    ];\n";
+                .implode(",\n{$tab}", $fillable)
+                .",\n    ];\n";
         }
 
         $castsString = '';
@@ -96,7 +96,7 @@ class ModelPatcher
 
         $relationString = '';
         if (! empty($relations)) {
-            $relationString = $relations . "\n";
+            $relationString = $relations."\n";
         }
 
         return [

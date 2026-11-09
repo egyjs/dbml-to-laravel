@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+
 use function Pest\Laravel\artisan;
 
 it('generates models and migrations from DBML', function () {
@@ -55,7 +56,7 @@ it('generates models and migrations from DBML', function () {
 });
 
 it('respects column type when generating foreign key constraints', function () {
-    $filesystem = new Filesystem();
+    $filesystem = new Filesystem;
     $baseTempPath = base_path('tests/.tmp/'.uniqid('dbml_typed_fk_', true));
     $appPath = $baseTempPath.'/app';
     $databasePath = $baseTempPath.'/database';
