@@ -17,5 +17,6 @@ php artisan dbml:generate database/schema.dbml
 php artisan dbml:sync database/schema.dbml --force
 </code-snippet>
 @endverbatim
+- **Preview and Parse Results**: Add `--dry-run` to preview the files that would be written, and `--json` for a machine-readable report. A non-zero exit code means the run failed; read the reported `errors`.
 - **Protect `@dbml-sync` Model Markers**: `dbml:sync` patches Eloquent models inside `// @dbml-sync:*` and `// @enddbml-sync:*` marker blocks (`table-property`, `fillable`, `casts`, `relations`). Never delete these marker comments, and always add custom model methods, scopes, traits, or attributes outside of those marker blocks.
 - **Relationships**: Declare each DBML relationship once (inline `[ref: > users.id]` or a top-level `Ref:`). Only `>` / `<` refs are generated; one-to-one (`-`) and many-to-many (`<>`) relations must be written by hand.

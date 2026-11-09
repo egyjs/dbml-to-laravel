@@ -232,11 +232,15 @@ Code outside these markers is never touched by `dbml:sync`.
 This package is built to be driven by AI coding agents (Claude Code, Cursor, Codex, Copilot, etc.): the agent edits **one declarative file** instead of hand-writing migrations, and the generator produces deterministic Laravel code.
 
 * **[Laravel Boost](https://github.com/laravel/boost) integration:** the package ships Boost guidelines and an agent skill in `resources/boost/`. Run `php artisan boost:install` (or `boost:update`) after installing this package and your agent learns the workflow automatically.
-* **Non-interactive by design:** pass `--force` so commands never wait on a prompt.
+* **Non-interactive by design:** pass `--force` so commands never wait on a prompt. Without `--force`, `dbml:sync` in a shell with no TTY exits with code `1` and tells you to re-run with `--force` instead of hanging or silently doing nothing.
+* **Preview first:** `--dry-run` (both commands) lists the files that would be written without touching models, migrations or the snapshot.
+* **Machine-readable output:** `--json` prints one JSON report: `{"success", "dry_run", "written": [paths], "skipped": [{target, reason}], "errors": [messages]}`.
+* **Reliable exit codes:** `0` on success, `1` on any error (missing file, parse error, reserved table name, unconfirmed prompt) — partial failures are never reported as success.
 * **Agent workflow:**
   1. Edit `database/schema.dbml`.
-  2. Run `php artisan dbml:sync database/schema.dbml --force` (first time: `php artisan dbml:generate database/schema.dbml`).
-  3. Review the new files in `database/migrations/` and `app/Models/`, then `php artisan migrate`.
+  2. Optionally preview: `php artisan dbml:sync database/schema.dbml --dry-run --json`.
+  3. Run `php artisan dbml:sync database/schema.dbml --force --json` (first time: `php artisan dbml:generate database/schema.dbml --json`) and check the exit code / `errors`.
+  4. Review the files listed in `written`, then `php artisan migrate`.
 * **Rules for agents:** do not hand-write migrations for tables managed in DBML, never remove `@dbml-sync` markers, and put custom model code outside the marker blocks.
 * **LLM index:** a concise [`llms.txt`](llms.txt) summarises the package for LLM tools.
 

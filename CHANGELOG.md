@@ -2,6 +2,20 @@
 
 All notable changes to `dbml-to-laravel` will be documented in this file.
 
+## Unreleased
+
+### Added
+- `--dry-run` on `dbml:generate` and `dbml:sync`: lists the files that would be written without writing models, migrations or the `.dbml-sync.json` snapshot.
+- `--json` on both commands: prints a single machine-readable report (`success`, `dry_run`, `written`, `skipped`, `errors`) for scripts and AI agents.
+- Laravel Boost guidelines and skill (`resources/boost/`), `llms.txt` and `context7.json` so AI coding agents can discover and correctly use the package.
+
+### Changed
+- **Requires PHP 8.2+** (the code already used readonly classes, so PHP 8.0/8.1 could not run it).
+- `dbml:generate` now exits with code `1` when a table cannot be generated (reserved model name, missing stub) instead of reporting success.
+- `dbml:sync` exits with code `1` when a confirmation is required but cannot be answered (no TTY, including Windows pipes), instead of hanging or silently skipping changes. Use `--force` to apply.
+- `dbml:sync` exits with code `1` when the dropped-tables confirmation is declined (previously exit `0`).
+- README: accurate feature list, current limitations, real generated output and an AI-agent section.
+
 ## v2.1.00
 
 ### Added

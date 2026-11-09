@@ -44,7 +44,12 @@ Compares `database/schema.dbml` against `.dbml-sync.json`, generates alter/creat
 ```bash
 php artisan dbml:sync database/schema.dbml --force
 ```
-- Always pass `--force` when running in non-interactive shells or AI coding agents to skip confirmation prompts.
+- Always pass `--force` when running in non-interactive shells or AI coding agents. Without it, `dbml:sync` exits `1` with a "re-run with --force" message when a confirmation is needed.
+
+### Agent-friendly options (both commands)
+- `--dry-run`: list files that would be written; writes nothing (no models, migrations or snapshot).
+- `--json`: print a single JSON report `{"success", "dry_run", "written", "skipped", "errors"}` instead of console text.
+- Exit code `0` = success, `1` = any error (missing file, parse error, reserved table name, unconfirmed prompt).
 
 ## AI Agent & Developer Conventions
 

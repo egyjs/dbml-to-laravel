@@ -24,6 +24,8 @@ Use this skill whenever creating or modifying database tables, columns, indexes,
      ```bash
      php artisan dbml:sync database/schema.dbml --force
      ```
+   - Preview without writing anything: add `--dry-run`. Add `--json` for a machine-readable report (`success`, `dry_run`, `written`, `skipped`, `errors`).
+   - Exit code `1` means something failed (e.g. reserved table name, parse error, or a confirmation needed without `--force`); read `errors` and fix before continuing.
 4. **Review Generated Artifacts**:
    - Verify the newly generated migration in `database/migrations/`.
    - Verify patched Eloquent models in `app/Models/`.
