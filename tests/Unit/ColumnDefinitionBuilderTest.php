@@ -25,6 +25,20 @@ it('builds an auto-incrementing primary key', function () {
     expect($result)->toContain("\$table->increments('id')");
 });
 
+it('never marks a primary key as nullable', function (bool $autoIncrement, string $expected) {
+    $builder = new ColumnDefinitionBuilder([]);
+    // DBML omits `not null` on pk columns; a primary key can never be NULL.
+    $column = new Column('id', new ColumnType('int'), true, false, false, $autoIncrement);
+    $result = $builder->buildColumnDefinition($column);
+
+    expect($result)->toContain($expected)
+        ->and($result)->not->toContain('->nullable()')
+        ->and($column->isNull())->toBeFalse();
+})->with([
+    'auto-increment' => [true, "\$table->increments('id')"],
+    'plain primary key' => [false, '->primary()'],
+]);
+
 it('builds a nullable column', function () {
     $builder = new ColumnDefinitionBuilder([]);
     $column = new Column('email', new ColumnType('varchar'), false, false, false, false);

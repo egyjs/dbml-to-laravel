@@ -160,7 +160,7 @@ class Post extends Model
 
 ```php
 Schema::create('posts', function (Blueprint $table) {
-    $table->increments('id')->nullable();
+    $table->increments('id');
     $table->integer('user_id')->nullable();
     $table->foreign('user_id')->references('id')->on('users');
     $table->string('title', 255)->nullable();

@@ -63,9 +63,12 @@ class Column
         $this->references[] = $reference;
     }
 
+    /**
+     * Primary keys are never nullable, even when DBML omits `not null` on them.
+     */
     public function isNull(): bool
     {
-        return ! $this->notNull;
+        return ! $this->notNull && ! $this->primaryKey;
     }
 
     public function getDefaultValue(): ?ColumnDefaultValue

@@ -16,6 +16,10 @@ All notable changes to `dbml-to-laravel` will be documented in this file.
 - `dbml:sync` exits with code `1` when the dropped-tables confirmation is declined (previously exit `0`).
 - README: accurate feature list, current limitations, real generated output and an AI-agent section.
 
+### Fixed
+- Primary key columns are no longer generated as `->nullable()` (e.g. `$table->increments('id')->nullable()`) when DBML omits `not null` on them.
+- Feature tests no longer leave `tests/Fixtures/.dbml-sync.json` behind.
+
 ## v2.1.00
 
 ### Added
