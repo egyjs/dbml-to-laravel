@@ -2,7 +2,7 @@
 
 All notable changes to `dbml-to-laravel` will be documented in this file.
 
-## Unreleased
+## v2.2.00 - 2026-11-10
 
 ### Added
 - `--dry-run` on `dbml:generate` and `dbml:sync`: lists the files that would be written without writing models, migrations or the `.dbml-sync.json` snapshot.
