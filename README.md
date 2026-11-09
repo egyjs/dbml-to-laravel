@@ -10,6 +10,25 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/egyjs/dbml-to-laravel.svg?style=flat-square)](https://packagist.org/packages/egyjs/dbml-to-laravel)
 [![Featured on Laravel News](https://img.shields.io/badge/Laravel%20News-Featured-orange?style=flat-square)](https://laravel-news.com/dbml-to-laravel)
 
+## **⚡ Quick Start**
+
+```bash
+composer require egyjs/dbml-to-laravel --dev
+php artisan dbml:generate database/schema.dbml        # first run: models + migrations + snapshot
+php artisan dbml:sync database/schema.dbml --force    # after each DBML edit: incremental migrations
+```
+
+## **🎯 When to Use This Package**
+
+Use `egyjs/dbml-to-laravel` when you want to:
+
+* **Turn a DBML schema or [dbdiagram.io](https://dbdiagram.io) diagram into Laravel code** — Eloquent models and migrations in one command.
+* **Keep the database schema in one declarative file** (`database/schema.dbml`) and generate migrations from changes, instead of hand-writing `php artisan make:migration` files.
+* **Scaffold a new Laravel app's data layer quickly** — fillable, casts, `belongsTo`/`hasMany` relations, foreign keys, indexes and enums.
+* **Let AI coding agents change the schema safely** — agents edit one DBML file and run `dbml:sync`; see [Using with AI Coding Agents](#-using-with-ai-coding-agents).
+
+It is **not** a tool for reverse-engineering an existing database into DBML, and it does not generate controllers, factories or seeders.
+
 ## **🚀 Motivation**
 
 Tired of manually writing Laravel Eloquent models and migration files from your database diagrams? This package automates the process, letting you focus on building features rather than repetitive boilerplate code. Say goodbye to manual schema-to-code conversion and embrace a faster, more efficient Laravel development workflow.
@@ -18,13 +37,18 @@ Tired of manually writing Laravel Eloquent models and migration files from your 
 
 ## **✨ Features**
 
-* **DBML to Laravel Models:** Automatically generate Eloquent models with fillable properties, hidden attributes, and defined relationships (one-to-one, one-to-many, many-to-many).  
-* **DBML to Migration Files:** Generate clean and accurate migration files with proper data types, nullability, default values, and foreign key constraints, directly from your DBML schema.  
-* **Customizable Stubs:** Easily modify the default model and migration stubs to align with your project's coding style and specific requirements.  
-* **Relationship Parsing:** Intelligently parses DBML relationships to create correct Eloquent relationship methods (e.g., `hasMany`, `belongsTo`, `belongsToMany`).  
-* **Casts Support:** Automatically adds common Eloquent casts (e.g., JSON to arrays, timestamps to datetime objects) based on DBML column types.
-* **Incremental Sync:** Run `dbml:sync` to generate alter migrations and patch models based on schema changes — no need to regenerate everything from scratch.
-  
+* **DBML to Eloquent Models:** Generates models with `$fillable`, `$casts`, a `$table` property when the table name is non-conventional, and relationship methods.
+* **Relationships:** `belongsTo` on the referencing model and `hasMany` on the referenced model, built from DBML `ref` / `Ref:` definitions.
+* **DBML to Migrations:** Column types, nullability, defaults, `unique`, primary keys, auto-increment, enums, single and composite indexes, and foreign keys (`onDelete` / `onUpdate` for `cascade`, `restrict`, `set null`).
+* **Casts:** `boolean`, `array` (json/jsonb), `datetime`, `date`, `float` and `decimal:N`, derived from DBML column types.
+* **Incremental Sync:** `dbml:sync` diffs the DBML file against a snapshot and generates create/alter/drop migrations, then patches models only inside `@dbml-sync` markers.
+* **Customizable Stubs:** Publish and edit the model and migration stubs to match your coding style.
+
+### **Current Limitations**
+
+* Only many-to-one / one-to-many refs (`>` and `<`) are used. One-to-one (`-`) and many-to-many (`<>`) refs are ignored — no foreign key, `hasOne`, pivot table or `belongsToMany` is generated for them.
+* `$hidden`, factories and seeders are not generated.
+* Columns without `not null` in DBML are generated as `->nullable()`.
 
 ## **📦 Installation**
 
@@ -34,7 +58,7 @@ To get started with the DBML to Laravel Eloquent Generator, follow these simple 
 ```bash
 composer require egyjs/dbml-to-laravel --dev
 ```
-3. **Publish the customizable stubs (optional, but recommended):**  
+2. **Publish the customizable stubs (optional, but recommended):**  
 ```bash
 php artisan vendor:publish --tag=dbml-to-laravel-stubs
 ```
@@ -70,10 +94,10 @@ Once installed, you can generate your Laravel models and migrations from a DBML 
      created_at datetime  
      updated_at datetime  
    }
-
-   Ref: posts.user_id > users.id
 ```
-3. **Run the Artisan command:**  
+   Declare each relationship once — either inline (`[ref: > users.id]`) or as a top-level `Ref:` line, not both.
+
+2. **Run the Artisan command:**  
 ```bash
 php artisan dbml:generate database/schema.dbml
 ```
@@ -87,7 +111,7 @@ After running the command, the package will generate:
 * **Eloquent Models:** In your `app/Models` directory (e.g., `app/Models/User.php`).  
 * **Migration Files:** In your `database/migrations` directory (e.g., `2023_01_01_000000_create_posts_table.php`).
 
-**Example Generated `app/Models/Post.php`:**
+**Example Generated `app/Models/Post.php`** (actual output for the schema above):
 
 ```php
 <?php
@@ -96,69 +120,57 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Post extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
+    // @dbml-sync:table-property
+
+    // @enddbml-sync:table-property
+
+    // @dbml-sync:fillable
     protected $fillable = [
         'user_id',
         'title',
-        'content',
+        'content'
     ];
+    // @enddbml-sync:fillable
 
-    /**
-     * Get the user that owns the Post.
-     */
-    public function user(): BelongsTo
+    // @dbml-sync:casts
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+    // @enddbml-sync:casts
+
+    // @dbml-sync:relations
+    public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
+
+    // @enddbml-sync:relations
 }
 ```
 
-Example Generated `database/migrations/2023_01_01_000000_create_posts_table.php`:
+`app/Models/User.php` gets the inverse `posts()` → `hasMany(Post::class, 'user_id', 'id')` relation.
+
+**Example Generated `database/migrations/2026_01_01_000001_create_posts_table.php`:**
 
 ```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('posts', function (Blueprint $table) {
-            $table->increments('id');
-            $table->integer('user_id');
-            $table->string('title');
-            $table->text('content');
-            $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('posts');
-    }
-}
+Schema::create('posts', function (Blueprint $table) {
+    $table->increments('id')->nullable();
+    $table->integer('user_id')->nullable();
+    $table->foreign('user_id')->references('id')->on('users');
+    $table->string('title', 255)->nullable();
+    $table->text('content')->nullable();
+    $table->timestamp('created_at')->nullable();
+    $table->timestamp('updated_at')->nullable();
+});
 ```
+
+Add `not null` to DBML columns that must be required (e.g. `title varchar [not null]`).
 
 ### **Incremental Sync**
 
@@ -170,7 +182,7 @@ php artisan dbml:sync database/schema.dbml
 
 This command:
 
-1. Reads the snapshot (`.dbml-sync.json`) created by `generate:dbml`
+1. Reads the snapshot `.dbml-sync.json` that `dbml:generate` writes **next to your DBML file** (e.g. `database/.dbml-sync.json` — commit it)
 2. Compares it against the current DBML file
 3. Generates **alter migrations** for added/modified/dropped columns, indexes, and foreign keys
 4. Generates **create migrations** for new tables and **drop migrations** for removed tables
@@ -214,6 +226,23 @@ class User extends Model
 ```
 
 Code outside these markers is never touched by `dbml:sync`.
+
+## **🤖 Using with AI Coding Agents**
+
+This package is built to be driven by AI coding agents (Claude Code, Cursor, Codex, Copilot, etc.): the agent edits **one declarative file** instead of hand-writing migrations, and the generator produces deterministic Laravel code.
+
+* **[Laravel Boost](https://github.com/laravel/boost) integration:** the package ships Boost guidelines and an agent skill in `resources/boost/`. Run `php artisan boost:install` (or `boost:update`) after installing this package and your agent learns the workflow automatically.
+* **Non-interactive by design:** pass `--force` so commands never wait on a prompt. Without `--force`, `dbml:sync` in a shell with no TTY exits with code `1` and tells you to re-run with `--force` instead of hanging or silently doing nothing.
+* **Preview first:** `--dry-run` (both commands) lists the files that would be written without touching models, migrations or the snapshot.
+* **Machine-readable output:** `--json` prints one JSON report: `{"success", "dry_run", "written": [paths], "skipped": [{target, reason}], "errors": [messages]}`.
+* **Reliable exit codes:** `0` on success, `1` on any error (missing file, parse error, reserved table name, unconfirmed prompt) — partial failures are never reported as success.
+* **Agent workflow:**
+  1. Edit `database/schema.dbml`.
+  2. Optionally preview: `php artisan dbml:sync database/schema.dbml --dry-run --json`.
+  3. Run `php artisan dbml:sync database/schema.dbml --force --json` (first time: `php artisan dbml:generate database/schema.dbml --json`) and check the exit code / `errors`.
+  4. Review the files listed in `written`, then `php artisan migrate`.
+* **Rules for agents:** do not hand-write migrations for tables managed in DBML, never remove `@dbml-sync` markers, and put custom model code outside the marker blocks.
+* **LLM index:** a concise [`llms.txt`](llms.txt) summarises the package for LLM tools.
 
 ## **⚙️ Customization**
 

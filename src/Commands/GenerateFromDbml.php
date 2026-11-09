@@ -2,6 +2,7 @@
 
 namespace Egyjs\DbmlToLaravel\Commands;
 
+use Egyjs\DbmlToLaravel\Commands\Concerns\ReportsResults;
 use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Generation\ModelContentBuilder;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
@@ -10,13 +11,17 @@ use Egyjs\DbmlToLaravel\Parsing\Dbml\Schema;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Table;
 use Egyjs\DbmlToLaravel\Parsing\NodeDbmlParser;
 use Illuminate\Console\Command;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Throwable;
 
 class GenerateFromDbml extends Command
 {
-    protected $signature = 'dbml:generate {file} {--force : Overwrite existing files}';
+    use ReportsResults;
+
+    protected $signature = 'dbml:generate {file}
+        {--force : Overwrite existing models and migrations}
+        {--dry-run : Show which files would be written without writing anything}
+        {--json : Print a machine-readable JSON report instead of console output}';
 
     protected $aliases = ['generate:dbml'];
 
@@ -47,21 +52,17 @@ class GenerateFromDbml extends Command
     public function handle(): int
     {
         $file = $this->argument('file');
+        $this->startReport();
 
-        // Check if the provided file exists
         if (! file_exists($file)) {
-            $this->error("File not found: $file");
-
-            return static::FAILURE;
+            return $this->failWith("File not found: $file");
         }
 
         try {
             $parser = new NodeDbmlParser;
             $schema = $parser->parse($file);
         } catch (Throwable $e) {
-            $this->error('Failed to parse DBML file: '.$e->getMessage());
-
-            return static::FAILURE;
+            return $this->failWith('Failed to parse DBML file: '.$e->getMessage());
         }
 
         $this->schema = $schema;
@@ -82,15 +83,20 @@ class GenerateFromDbml extends Command
             }
         }
 
-        $this->info("Generated $generatedModels models and $generatedMigrations migrations successfully.");
+        $prefix = $this->isDryRun() ? '[dry-run] Would generate' : 'Generated';
+        $this->info("$prefix $generatedModels models and $generatedMigrations migrations.");
 
         // Write snapshot for future dbml:sync runs
         $payload = $parser->getLastPayload();
-        if ($payload !== null) {
+        if ($payload !== null && ! $this->isDryRun()) {
             (new JsonSnapshotStore)->write($file, $payload);
         }
 
-        return static::SUCCESS;
+        if ($this->report['errors'] !== []) {
+            $this->error(count($this->report['errors']).' error(s); see messages above.');
+        }
+
+        return $this->finish();
     }
 
     protected function generateModel(Table $table): bool
@@ -99,7 +105,7 @@ class GenerateFromDbml extends Command
 
         // Check if the model name is a reserved PHP keyword
         if ($this->isForbiddenModelName($modelName)) {
-            $this->error("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
+            $this->reportError("Model \"$modelName\" for table \"{$table->getName()}\" cannot be created because it is a reserved PHP keyword.");
 
             return false;
         }
@@ -117,9 +123,8 @@ class GenerateFromDbml extends Command
             return false;
         }
 
-        $this->ensureDirectoryExists(dirname($filePath));
-        (new Filesystem)->put($filePath, $content);
-        $this->info("Model $modelName created.");
+        $this->writeGeneratedFile($filePath, $content);
+        $this->info($this->isDryRun() ? "[dry-run] Would create model $modelName." : "Model $modelName created.");
 
         return true;
     }
@@ -139,6 +144,7 @@ class GenerateFromDbml extends Command
         // Check if migration already exists
         if (! $this->option('force') && $this->migrationExists($table->getName())) {
             $this->warn("Migration for table {$table->getName()} already exists. Skipping...");
+            $this->reportSkipped("migration:{$table->getName()}", 'exists (use --force to overwrite)');
 
             return false;
         }
@@ -149,9 +155,8 @@ class GenerateFromDbml extends Command
             return false;
         }
 
-        $this->ensureDirectoryExists(dirname($filePath));
-        (new Filesystem)->put($filePath, $content);
-        $this->info("Migration for {$table->getName()} created.");
+        $this->writeGeneratedFile($filePath, $content);
+        $this->info($this->isDryRun() ? "[dry-run] Would create migration for {$table->getName()}." : "Migration for {$table->getName()} created.");
 
         // Increment counter for next migration
         $this->migrationCounter++;
@@ -204,7 +209,7 @@ class GenerateFromDbml extends Command
     {
         $stub = $this->getStubContent($stubName);
         if ($stub === null) {
-            $this->error("$type stub not found.");
+            $this->reportError("$type stub not found.");
 
             return null;
         }
@@ -222,6 +227,7 @@ class GenerateFromDbml extends Command
         // Check if the model file already exists
         if (file_exists($filePath)) {
             $this->warn("Model $modelName already exists. Use --force to overwrite.");
+            $this->reportSkipped("model:$modelName", 'exists (use --force to overwrite)');
 
             return true;
         }
@@ -241,13 +247,6 @@ class GenerateFromDbml extends Command
         $existingMigrations = glob($migrationPath.'/'.$migrationPattern);
 
         return ! empty($existingMigrations);
-    }
-
-    private function ensureDirectoryExists(string $directory): void
-    {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
     }
 
     private function generateIndexDefinitions(Table $table): string
