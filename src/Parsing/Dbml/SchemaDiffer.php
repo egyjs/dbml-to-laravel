@@ -18,6 +18,7 @@ class SchemaDiffer
         foreach ($newTableMap as $name => $table) {
             if (! isset($oldTableMap[$name])) {
                 $addedTables[] = $table;
+
                 continue;
             }
 
@@ -62,6 +63,7 @@ class SchemaDiffer
         foreach ($newColumnMap as $name => $column) {
             if (! isset($oldColumnMap[$name])) {
                 $addedColumns[] = $column;
+
                 continue;
             }
 
@@ -155,7 +157,7 @@ class SchemaDiffer
             if (empty($index->getColumns()) || in_array($index->getType(), ['pk', 'primary'], true)) {
                 continue;
             }
-            $key = implode(',', array_map('strtolower', $index->getColumns())) . ($index->isUnique() ? ':unique' : '');
+            $key = implode(',', array_map('strtolower', $index->getColumns())).($index->isUnique() ? ':unique' : '');
             $map[$key] = $index;
         }
 
@@ -201,7 +203,7 @@ class SchemaDiffer
             foreach ($column->getRefs() as $ref) {
                 $refTable = $ref->getRightTable()->getTable();
                 $refCol = $ref->getReferencedColumn() ?? 'id';
-                $key = strtolower($column->getName()) . '->' . strtolower($refTable) . '.' . strtolower($refCol);
+                $key = strtolower($column->getName()).'->'.strtolower($refTable).'.'.strtolower($refCol);
                 $map[$key] = ['column' => $column->getName(), 'reference' => $ref];
             }
         }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Egyjs\DbmlToLaravel\Generation;
 
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Column;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnPair;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\IndexDefinition;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\TableDiff;
@@ -22,18 +21,18 @@ class AlterMigrationGenerator
         $downLines = [];
 
         foreach ($diff->addedColumns as $column) {
-            $upLines[] = '            ' . $this->columnBuilder->buildColumnDefinitionWithoutIndent($column) . ';';
+            $upLines[] = '            '.$this->columnBuilder->buildColumnDefinitionWithoutIndent($column).';';
             $downLines[] = "            \$table->dropColumn('{$column->getName()}');";
         }
 
         foreach ($diff->droppedColumns as $column) {
             $upLines[] = "            \$table->dropColumn('{$column->getName()}');";
-            $downLines[] = '            ' . $this->columnBuilder->buildColumnDefinitionWithoutIndent($column) . ';';
+            $downLines[] = '            '.$this->columnBuilder->buildColumnDefinitionWithoutIndent($column).';';
         }
 
         foreach ($diff->modifiedColumns as $pair) {
-            $upLines[] = '            ' . $this->buildChangeColumn($pair->new) . ';';
-            $downLines[] = '            ' . $this->buildChangeColumn($pair->old) . ';';
+            $upLines[] = '            '.$this->buildChangeColumn($pair->new).';';
+            $downLines[] = '            '.$this->buildChangeColumn($pair->old).';';
         }
 
         foreach ($diff->addedIndexes as $index) {
@@ -78,10 +77,10 @@ class AlterMigrationGenerator
         }
 
         if ($column->getDefaultValue() !== null) {
-            $def .= '->default(' . $this->columnBuilder->formatDefaultValue($column->getDefaultValue()) . ')';
+            $def .= '->default('.$this->columnBuilder->formatDefaultValue($column->getDefaultValue()).')';
         }
 
-        if ($column->isUnique() && !$column->isPrimaryKey()) {
+        if ($column->isUnique() && ! $column->isPrimaryKey()) {
             $def .= '->unique()';
         }
 
@@ -90,10 +89,6 @@ class AlterMigrationGenerator
         return $def;
     }
 
-    /**
-     * @param IndexDefinition $index
-     * @return string
-     */
     private function buildDropIndex(IndexDefinition $index): string
     {
         if ($index->getName()) {
@@ -103,12 +98,11 @@ class AlterMigrationGenerator
         $columns = array_map(fn (string $col) => "'{$col}'", $index->getColumns());
         $method = $index->isUnique() ? 'dropUnique' : 'dropIndex';
 
-        return "            \$table->{$method}([" . implode(', ', $columns) . ']);';
+        return "            \$table->{$method}([".implode(', ', $columns).']);';
     }
 
     /**
-     * @param array{column: string, reference: ColumnReference} $fkData
-     * @return string
+     * @param  array{column: string, reference: ColumnReference}  $fkData
      */
     private function buildAddForeignKey(array $fkData): string
     {
@@ -119,14 +113,13 @@ class AlterMigrationGenerator
         $actions = $this->columnBuilder->formatForeignKeyActions($ref);
 
         return "            \$table->foreign('{$columnName}')"
-            . "->references('{$referencedColumn}')"
-            . "->on('{$referencedTable}')"
-            . $actions . ';';
+            ."->references('{$referencedColumn}')"
+            ."->on('{$referencedTable}')"
+            .$actions.';';
     }
 
     /**
-     * @param array{column: string, reference: ColumnReference} $fkData
-     * @return string
+     * @param  array{column: string, reference: ColumnReference}  $fkData
      */
     private function buildDropForeignKey(array $fkData): string
     {

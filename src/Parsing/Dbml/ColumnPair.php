@@ -7,6 +7,7 @@ namespace Egyjs\DbmlToLaravel\Parsing\Dbml;
 class ColumnPair
 {
     public Column $old;
+
     public Column $new;
 
     public function __construct(Column $old, Column $new)

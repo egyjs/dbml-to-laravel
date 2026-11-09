@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 use Egyjs\DbmlToLaravel\Generation\ColumnDefinitionBuilder;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\Column;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnDefaultValue;
+use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnType;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\EnumDefinition;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\EnumValue;
 use Egyjs\DbmlToLaravel\Parsing\Dbml\ReferenceTable;
-use Egyjs\DbmlToLaravel\Parsing\Dbml\ColumnReference;
 
 it('builds a string column definition', function () {
     $builder = new ColumnDefinitionBuilder([]);
