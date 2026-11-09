@@ -62,6 +62,9 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
       - name: Install dependencies
+        env:
+          # Laravel 11 is EOL; all 11.x releases carry advisories. CI still tests compat.
+          COMPOSER_POLICY_ADVISORIES_BLOCK: 0
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction

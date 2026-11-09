@@ -58,6 +58,9 @@
     },
     "config": {
         "sort-packages": true,
+        "platform": {
+            "php": "8.2.0"
+        },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "phpstan/extension-installer": true
