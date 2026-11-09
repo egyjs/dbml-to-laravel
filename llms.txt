@@ -1,0 +1,76 @@
+# dbml-to-laravel (egyjs/dbml-to-laravel)
+
+> Laravel package to generate and incrementally sync Eloquent models and database migration files directly from DBML (Database Markup Language) schema files.
+
+## Overview
+
+`egyjs/dbml-to-laravel` ([GitHub Repository](https://github.com/egyjs/dbml-to-laravel)) makes your DBML file (e.g., `database/schema.dbml`) the single source of truth for your Laravel database schema and Eloquent model boilerplate. It uses a pre-bundled Node.js DBML parser (`bin/parse-dbml.runtime.cjs`) and supports both initial full generation (`dbml:generate`) and incremental schema synchronization (`dbml:sync`) via safe `@dbml-sync` model markers.
+
+## Requirements & Installation
+
+- Laravel 8.x+
+- PHP 8.2+
+- Node.js 18+ runtime (parser is pre-bundled; `npm install` is not required in consumer projects)
+
+Install via Composer:
+```bash
+composer require egyjs/dbml-to-laravel --dev
+```
+
+Optionally publish customizable model and migration stubs to `stubs/dbml-to-laravel/`:
+```bash
+php artisan vendor:publish --tag=dbml-to-laravel-stubs
+```
+
+## Core Artisan Commands
+
+### 1. Initial Generation (`dbml:generate`)
+Generates Eloquent models (`app/Models/*.php`), create-table migrations (`database/migrations/*.php`), and the `.dbml-sync.json` schema snapshot:
+```bash
+php artisan dbml:generate database/schema.dbml
+```
+(Legacy alias: `php artisan generate:dbml database/schema.dbml`)
+
+### 2. Incremental Sync (`dbml:sync`)
+Compares `database/schema.dbml` against `.dbml-sync.json`, generates alter/create/drop migrations for schema deltas (columns, indexes, foreign keys, tables), updates `.dbml-sync.json`, and patches existing Eloquent models only inside `@dbml-sync` marker blocks:
+```bash
+php artisan dbml:sync database/schema.dbml --force
+```
+- Always pass `--force` when running in non-interactive shells or AI coding agents to skip confirmation prompts.
+
+## AI Agent & Developer Conventions
+
+1. **DBML as Single Source of Truth**: Modify `database/schema.dbml` and run `php artisan dbml:sync database/schema.dbml --force` instead of creating manual migrations with `php artisan make:migration`.
+2. **Preserve `@dbml-sync` Model Markers**: Generated Eloquent models contain marker comments that `dbml:sync` uses for incremental patching:
+   - `// @dbml-sync:table-property` ... `// @enddbml-sync:table-property`
+   - `// @dbml-sync:fillable` ... `// @enddbml-sync:fillable`
+   - `// @dbml-sync:casts` ... `// @enddbml-sync:casts`
+   - `// @dbml-sync:relations` ... `// @enddbml-sync:relations`
+   Never remove these markers, and write custom methods, scopes, or accessors outside the marker blocks so `dbml:sync` preserves them.
+
+## Example DBML Schema (`database/schema.dbml`)
+
+```dbml
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  password varchar
+  created_at datetime
+  updated_at datetime
+}
+
+Table posts {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  title varchar
+  content text
+  created_at datetime
+  updated_at datetime
+}
+```
+
+## Documentation Links
+
+- [Repository & README](https://github.com/egyjs/dbml-to-laravel)
+- [Laravel Boost Package Guidelines Specification](https://laravel.com/framework/docs/boost)
